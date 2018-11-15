@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * 메세지를 최종적으로 전달 받은 RabbitMQ는 존재않는 subscription id라며 에러 메세지를 반환하고 클라이언트와 서버간의 
  * 커넥션이 끊겨 버렸다. 물론 재연결이 가능하지만 이건 임시방편일 뿐이므로 아래와 같은 Inbound Channel에 적용될 
- * {@link ChannelInterceptor}를 구현하게 되었다. 
+ * {@link ChannelInterceptor}를 구현하여 RabbitMQ로 unsubscription message가 전달되지 않도록 하였다.
  * 
  * 
  * @author leeseunghyun
@@ -48,12 +48,12 @@ import lombok.extern.slf4j.Slf4j;
 public class StageUnsubscribeInterceptor extends ChannelInterceptorAdapter {
     
     /**
-     * stage관련 unsubscription 메세지가 전달될 경우 이를 {@link SimpleBrokerMessageHandler}에만
+     * stage 관련 unsubscription 메세지가 전달될 경우 이를 오직 {@link SimpleBrokerMessageHandler}에만
      * 전달한다.
      * 
      * 또한 메서드의 반환 타입을 고려하여 임의로 만든 길이 0의 메세지를 생성하여 특정 엔드포인트({@link MessageMapping)
-     * 로 전달하게 하였다.이 엔드 포인트 처리하는 핸들러 메서드는 전달 받은 메세지를 어디에도 전달하지 않고 메세지는 결국 
-     * 무시된다.
+     * 로 전달하게 하였다.이 엔드 포인트로의 메세지를 처리하는 핸들러 메서드는 전달 받은 메세지를 어디에도 전달하지 않기 때문에 
+     * 결국 메세지는 무시된다.
      */
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {

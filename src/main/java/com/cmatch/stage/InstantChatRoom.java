@@ -1,6 +1,8 @@
 package com.cmatch.stage;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -12,12 +14,14 @@ import lombok.Getter;
 import lombok.ToString;
 
 @ToString
+@Getter
 public class InstantChatRoom {
 
+    private static final int INSTANT_CHATROOM_CAPACITY = 2;
+    
     private static final Logger logger = LoggerFactory.getLogger(InstantChatRoom.class);
 
-    @Getter
-    private final Map<String, Boolean> followingChoices = new HashMap<>(2);
+    private final Map<String, Boolean> followingChoices = new HashMap<>(INSTANT_CHATROOM_CAPACITY);
     private String roomId;
     private boolean timeover;
 
@@ -45,11 +49,7 @@ public class InstantChatRoom {
             throw new IllegalArgumentException("User is not member of this room.");
         }
     }
-
-    public boolean isTimeover() {
-        return timeover;
-    }
-
+    
     public void setTimeover() {
         if (!timeover) {
             timeover = true;

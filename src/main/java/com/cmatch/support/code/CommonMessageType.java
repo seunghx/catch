@@ -1,7 +1,7 @@
 package com.cmatch.support.code;
 
 public enum CommonMessageType implements KeyValueShapedCode {
-    NOTICE, ECHO;
+    NOTICE, ECHO, PARTNER_LEAVE;
 
     @Override
     public String getName() {

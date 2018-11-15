@@ -12,6 +12,8 @@ public class WebsocketConnectedListener implements ApplicationListener<SessionCo
 
     @Override
     public void onApplicationEvent(SessionConnectedEvent event) {
-        log.error("{}", event);
+        if(log.isInfoEnabled()) {
+            log.info("New session connected. Connected user : {} ", event.getUser());
+        }
     }
 }

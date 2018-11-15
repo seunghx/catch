@@ -2,7 +2,7 @@ package com.cmatch.support.code;
 
 public enum MatchingMessageType implements KeyValueShapedCode {
 
-    REQUEST, ACCEPT, DENY, EXEPTION;
+    REQUEST, ACCEPT, DENY;
 
     @Override
     public String getName() {

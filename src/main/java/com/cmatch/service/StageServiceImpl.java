@@ -18,13 +18,13 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.socket.messaging.AbstractSubProtocolEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 import com.cmatch.domain.User;
 import com.cmatch.dto.MatchingCriteria;
 import com.cmatch.dto.MatchingRequest;
-import com.cmatch.dto.MatchingResponse;
 import com.cmatch.dto.Notification;
 import com.cmatch.dto.MatchingResponse.CommonMatchingResponse;
 import com.cmatch.dto.MatchingResponse.MatchingAcceptResponse;
@@ -39,13 +39,16 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
+import static com.cmatch.dto.Notification.LeaveNotification;
+
 @Slf4j
 @Service
 public class StageServiceImpl implements StageService, ApplicationEventPublisherAware {
-
+    
     private static final String FOLLOWING_FAIL_MESSAGE = "%s님과의 팔로잉에 실패하였습니다.";
     private static final String FOLLOWING_SUCCESS_MESSAGE = "%s님과의 팔로잉에 성공하였습니다.";
-
+    private static final String INSTANT_PARTNER_LEAVE_MESSAGE = "상대방이 stage를 떠났습니다.";
+    
     private static final int INSTANT_CHAT_TIMER_THREAD_CNT = 3;
 
     private static final Map<String, MatchingCandidate> users = new HashMap<>();
@@ -104,7 +107,17 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
 
     @Override
     public void deleteUserFromStage(String email) {
+        if(StringUtils.isEmpty(email)) {
+            log.error("Empty user email detected. "
+                                    + "Checking security or preceding object codes required.");
+        }
         users.remove(email);
+        
+        chatRooms.entrySet()
+                 .parallelStream()
+                 .map(entry -> entry.getValue())
+                 .filter(room -> room.getRoomUsers().contains(email))
+                 .forEach(room -> chatRooms.remove(room.getRoomId()));
     }
 
     @Override
@@ -166,10 +179,8 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
         log.info("Received matching request : {}", matchingRequest.getMessageType());
 
         if (!users.containsKey(matchingRequest.getTo())) {
-
-            msgTemplate.convertAndSendToUser(matchingRequest.getTo()
-                                           , "/queue/stage"
-                                           , new MatchingResponse(MatchingMessageType.EXEPTION) {});
+           log.debug("Unknown sender detected. Maybe sender just leaves stage.");
+           return;
         }
 
         if (matchingRequest.getMessageType() == MatchingMessageType.REQUEST) {
@@ -182,11 +193,12 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
         } else if (matchingRequest.getMessageType() == MatchingMessageType.ACCEPT) {
 
             String uuid = UUID.randomUUID().toString().replaceAll("-", "");
-            msgTemplate.convertAndSendToUser(matchingRequest.getTo(), "/queue/stage",
-                    new MatchingAcceptResponse(MatchingMessageType.ACCEPT, userEmail, uuid));
+            
+            msgTemplate.convertAndSendToUser(matchingRequest.getTo(), "/queue/stage"
+                   , new MatchingAcceptResponse(MatchingMessageType.ACCEPT, userEmail, uuid));
 
-            msgTemplate.convertAndSendToUser(userEmail, "/queue/stage",
-                    new MatchingAcceptResponse(MatchingMessageType.ACCEPT, matchingRequest.getTo(), uuid));
+            msgTemplate.convertAndSendToUser(userEmail, "/queue/stage"
+                   , new MatchingAcceptResponse(MatchingMessageType.ACCEPT, matchingRequest.getTo(), uuid));
 
             InstantChatRoom chatRoom = new InstantChatRoom(uuid, userEmail, matchingRequest.getTo());
 
@@ -206,13 +218,14 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
     @Override
     public void instantChatTimeover(String userEmail, String roomId) {
         validateStageUser(userEmail);
-
+        
         setFollowingChoiceTimeover(roomId);
     }
 
     @Override
     public void choiceFollowing(String userEmail, String roomId, boolean follow) {
         validateStageUser(userEmail);
+        
         chatRooms.get(roomId).setfollowingChoice(userEmail, follow);
     }
 
@@ -223,18 +236,57 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
     
     @EventListener
     public void onDisconnectEvent(SessionDisconnectEvent e) {
-        log.error("{}", e);
-        log.error("fuck");
+       handleStageLeaveEvent(e);
+    }
+    
+    @EventListener
+    public void onUnsubscribeEvent(SessionUnsubscribeEvent e) {
+        handleStageLeaveEvent(e);
+    }
+    
+    private void handleStageLeaveEvent(AbstractSubProtocolEvent e) {
+        if(e.getUser() == null) {
+            log.error("Null value user principal detected.");
+            log.error("Cheching security or preceding object codes, required.");
+            throw new IllegalStateException("User principal is null.");
+        }        
+        
+        String userName = e.getUser().getName();
+        
+        if(isUserExist(userName)) {
+            sendLeaveMessageToChatPartners(userName);
+            deleteUserFromStage(e.getUser().getName());
+        }
+        
+    }
+    
+    private void validateStageUser(String userEmail) {
+        if(isUserExist(userEmail)) {
+            log.error("Illegal request detected. requested user is not on stage.");
+            throw new IllegalStateException();
+            // 400 error 관련 예외로 변경.
+        }
     }
 
     /**
      * 현재 stage 상에 존재하는 유저인지 검사.
      * 
      */
-    private void validateStageUser(String userEmail) {
-        Optional.ofNullable(users.get(userEmail))
-                .filter(stageUser -> stageUser.getUser() != null)
-                .orElseThrow(() -> new IllegalArgumentException());
+    private boolean isUserExist(String userEmail) {
+       return Optional.ofNullable(users.get(userEmail))
+                      .filter(stageUser -> stageUser.getUser() != null)
+                      .isPresent();
+    }
+    
+    private void sendLeaveMessageToChatPartners(String userName) {
+        chatRooms.entrySet().parallelStream()
+                            .map(room -> room.getValue())
+                            .filter(room -> room.getRoomUsers().contains(userName))
+                            .forEach(room -> {
+                                msgTemplate
+                                    .convertAndSend("/stage/chat/" + room.getRoomId()
+                                                  , new LeaveNotification(INSTANT_PARTNER_LEAVE_MESSAGE));
+                            });
     }
 
     private void setFollowingChoiceTimeover(String roomId) {

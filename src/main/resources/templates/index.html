@@ -78,7 +78,7 @@
     			    enterStage();
     		    },
     			close: function() {
-    	   	        exitStage();
+    	   	        leaveStage();
     			}
     	    }
     	});
@@ -375,7 +375,6 @@
         });  
     }
     		
-  	  	
     function handleMatchingMessage(message){
     			
         if(message.messageType === codeBook.matchingMessageTypes.REQUEST && !isInstantChatStarted){
@@ -425,13 +424,22 @@
     	        			    + '</div>'
     	        	    );
     	            }
+    	            
     	            $('#instant-chat-msg-history').scrollTop($('#instant-chat-msg-history')[0].scrollHeight);
+    	        }else if(payload.messageType === codeBook.commonMessageTypes.PARTNER_LEAVE){
+    	        	
+    	            $('#instant-chat-container').modal('close');
+    	            
+                    alert(payload.text);
+
+    	            $('.mfp-container').css('display', 'inline-block');
+    	            $('.mfp-wrap').css('display', 'inline-block');
+    	            $('.mfp-bg').css('display', 'inline-block');
+    	                        
+    	            isInstantChatStarted = false;
+
     	        }else{
-    	    	    if(payload.messageType === codeBook.commonMessageTypes.NOTICE){
-    	    		    alert(payload.text);
-    	    	    }else{
-    	    		    // report error
-    	    	    }
+    	    	   // report error
     	        }
     	    });
 
@@ -458,8 +466,6 @@
     	}else if(message.messageType === codeBook.matchingMessageTypes.DENY && !isInstantChatStarted){
     	    alert(message.from.email + '님 으로부터 대화 신청 거절당했습니다.');
     				
-    	}else if(message.messageType === codeBook.matchingMessageTypes.EXCEPTION && !isInstantChatStarted){
-    		alert('상대방과의 연결이 끊어졌습니다.');	
     	}else {
     		// report error to server
     	}
@@ -515,7 +521,7 @@
     	}
     }
     		
-    function exitStage() {
+    function leaveStage() {
     	if(stageSubscription){
     		stageSubscription.unsubscribe();
             stageSubscription = null;
