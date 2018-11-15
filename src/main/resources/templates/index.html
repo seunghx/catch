@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+			xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <meta charset="utf-8">
+
+    <title>C A T C H</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" rel="stylesheet" type="text/css">
+    	  
+    <link href="/vendor/index/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/vendor/index/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
+    
+    <link href="/vendor/index/magnific-popup/magnific-popup.css" rel="stylesheet" type="text/css">
+	<link href="/css/index/index.min.css" rel="stylesheet">
+    <link href="/css/index/stage.css" rel="stylesheet">
+	<link href="/css/index/freelancer.min.css" rel="stylesheet">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" type="text/css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
+		
+		
+    <script src="/vendor/index/jquery/jquery.min.js"></script>
+    <script src="/vendor/index/bootstrap/js/bootstrap.bundle.min.js"></script>
+	<script src="/vendor/index/jquery/jquery.min.js"></script>
+    <script src="/vendor/index/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/vendor/index/jquery-easing/jquery.easing.min.js"></script>
+    <script src="/vendor/index/magnific-popup/jquery.magnific-popup.min.js"></script>
+		
+	<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+	<script src="/js/stomp.js"></script>
+	  
+    <script src="/js/index/index.min.js"></script>
+   	<script src="/js/index/jqBootstrapValidation.js"></script>
+    
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+    
+    <script th:inline="javascript">    
+	
+    const INSTANT_CHAT_INFO_MSG = "초 동안 채팅 후 친구 추가를 할 지 결정할 수 있습니다. 화이팅!";
+    const FOLLOWING_CHOICE_INFO_MSG = "초 동안 팔로우 여부를 결정하지 않을 경우 자동 취소됩니다.";
+    	
+    let matchingCandidateCnt = 1;
+    let stompClient = null;
+    let userName = null;
+    let stageSubscription = null;
+    let stageQueueSubscription = null;
+    let codeBook = /*[[${codeBook}]]*/ null;
+    let instantChatSubscription = null;
+    let instantChatRoomId = null;
+    let instantChatTimeLimitInterval = null;
+    let followingChoiceTimeLimitInterval = null;
+    	
+	let followingChoiceTimer = null;
+    let instantChatPartnerId = null;
+	let stageTimer = null;
+	let roomList = null;
+	let curRoomName = null;
+	let subscriptions = [];
+			
+    let isInstantChatStarted = false;
+	let isFollowingChoiced = false;
+			
+    $(document).ready(function(){
+    		
+        matchingSelectContainer = $('.matching-select-container').html();
+        connect();
+
+    	$('.logout-link').click(() => {
+    		$(".logout-form").submit();
+    	});
+  			
+    	$('.stage-link').magnificPopup({
+    	    type:'inline',
+    		closeOnBgClick : false,
+    		callbacks: {
+                open: function() {
+    			    enterStage();
+    		    },
+    			close: function() {
+    	   	        exitStage();
+    			}
+    	    }
+    	});
+    		    		
+    	$('#chat-matching-accept-btn').click(function(){
+
+    		let matchedUser = $(this).attr('data-username');
+    		
+			$.ajax({
+				type : 'POST',
+			    url : "/stage/matching",
+				contentType : "application/json",
+				data : JSON.stringify({
+					'to' : matchedUser,
+					'messageType' : codeBook.matchingMessageTypes.ACCEPT
+				}),
+				async : true
+			});
+					
+			$('#chat-matching-modal').css('visibility', 'hidden');
+    	});
+    	
+    	$('#chat-matching-deny-btn').click(function(){
+
+    	    let matchedUser = $(this).attr('data-username');
+
+		    $.ajax({
+			    type : 'POST',
+			    url : "/stage/matching",
+				contentType : "application/json",
+				data : JSON.stringify({
+					'to' : matchedUser,
+					'messageType' : codeBook.matchingMessageTypes.DENY
+				}),
+				async : true
+			});
+					
+			$('#chat-matching-modal').css('visibility', 'hidden');
+    	});
+    		
+    	$('#following-accept-btn').click(function(){
+    		
+			isFollowingChoiced = true;
+			clearInterval(followingChoiceTimer);
+					
+    		$.ajax({
+    			type : 'POST',
+				url : '/stage/chat/following',
+				contentType : 'application/json',
+				data : JSON.stringify({
+					'roomId' : instantChatRoomId,
+					'follow' : true
+				}),
+				async : true
+			});
+    			
+    	    $('#following-modal').css('visibility', 'hidden');
+    	    $('.mfp-container').css('display', 'inline-block');
+    	    $('.mfp-wrap').css('display', 'inline-block');
+    	    $('.mfp-bg').css('display', 'inline-block');
+    			
+    	    $.magnificPopup.open({
+    	        items: {
+    	            src: '#stage-modal'
+    	        },
+    	        type: 'inline',
+    	    });
+        });
+    		
+        $('#following-deny-btn').click(function(){
+	    isFollowingChoiced = true;
+	    clearInterval(followingChoiceTimer);
+
+    	$.ajax({
+    	    type : 'POST',
+			url : '/stage/chat/following',
+			contentType : 'application/json',
+			data : JSON.stringify({
+				'roomId' : instantChatRoomId,
+				'follow' : false
+			}),
+			async : true
+    	});
+    			
+        $('#following-modal').css('visibility', 'hidden');
+
+    	$('.mfp-container').css('display', 'inline-block');
+        $('.mfp-wrap').css('display', 'inline-block');
+        $('.mfp-bg').css('display', 'inline-block');
+    });
+    		
+    $('#stage-chat-msg-send').click(function(e){
+    	let msg = $('#stage-chat-write-msg').val();
+    	stompClient.send('/stage/message', {}, JSON.stringify({'text' : msg}));
+    	$('#stage-chat-write-msg').val('');
+    });
+    	
+   	$('#instant-chat-msg-send').click(function(e){
+		let msg = $('#instant-chat-write-msg').val();
+		stompClient.send('/stage/chat/' + instantChatRoomId, {}, JSON.stringify({'from': userName, 'text' : msg}));
+		$('#instant-chat-write-msg').val('');
+	});
+    		
+    $('#link-to-chat').bind('click', function(){
+        readChatRooms();
+
+    	$('.main-section-container').css('display', 'none');
+    	$('.chat-section-container').css('display', 'inline-block');	
+    });
+    
+    $('#link-to-main').bind('click', function(){
+        $('#chat-msg-history').html('');
+    	$('.chat-section-container').css('display', 'none');
+    	$('.main-section-container').css('display', 'inline-block');
+    });
+    		
+	$('#chat-msg-send-btn').click(function(e){
+		let msg = $('#chat-write-msg').val();
+		stompClient.send('/chat/message/' + curRoomName, {}, JSON.stringify({'text' : msg}));
+		$('#chat-write-msg').val('');
+	});
+
+    $('.matching-form').on('submit', function(e){
+        matchingSubmit(e);
+    });
+    
+    function connect() {
+      console.log('called');
+      let socket = new SockJS('/connect');
+      socket.onclose = closeEventCallback;
+
+      stompClient = Stomp.over(socket);  
+      stompClient.heartbeat.outgoing = 20000;
+      stompClient.heartbeat.incoming = 0;
+
+      stompClient.connect({}, function(frame){
+    	  userName = frame.headers['user-name'];    
+      });
+      
+    }
+    
+    function closeEventCallback(e){
+        connect();
+    }
+    
+    function readChatRooms(){
+    			
+        $.ajax({
+		    type : 'GET',
+		    url : "/chatRooms",
+			success : function(rooms){
+							
+			    $('.inbox_chat').html('');
+
+			    for(let room of rooms){
+							  	
+			        let subscription = stompClient.subscribe('/topic/' + room.name, function(data){
+			            showChatMessage(JSON.parse(data.body));
+					});
+													
+					subscriptions.push(subscription);
+							
+					let user = null;
+						
+					if(room.user1.email === userName){
+						user = room.user2
+					}else{
+						user = room.user1
+					}
+								
+					$('.inbox_chat').append(
+									'<div class="chat_list" data-room-name="'+ room.name +'">'
+									   + '<div class="chat_people">'
+					              		+ '<div class="chat_img"> <img src="' + user.image + '"> </div>'
+					            		+ '<div class="chat_ib"> '
+					              		 + '<h5>' + user.email + '</h5>'
+					              		+ '</div>'
+					           		   + '</div>'
+					          	  + '</div>');
+				}
+							
+				curRoomName = rooms[0].name;
+				roomList = rooms;
+
+				$('.chat_list').bind('click', function(){
+					$('.chat_list').attr('class', "chat_list");
+					$(this).attr('class', 'chat_list active_chat');
+					$('#chat-msg-history').html('');
+				});
+			},
+		    error: function (request, status, error) {
+		        alert(request.responseText);
+				alert(status);
+		    }
+		});
+    }
+    	
+    function enterStage() {
+    	if(stompClient){
+    	  	$('input[name="limit"]').val(matchingCandidateCnt);
+    	  	    	    
+          	stageSubscription = stompClient.subscribe('/stage', function(response) {
+          		showStageMessage(JSON.parse(response.body));
+         	}, {id : codeBook.subscriptionModes.STAGE + '-topic-' + userName});
+            console.log(stageSubscription);
+          	stageQueueSubscription = stompClient.subscribe('/user/queue/stage', function(response){
+        		handleMatchingMessage(JSON.parse(response.body))
+        	}, {id : codeBook.subscriptionModes.STAGE + '-queue-' + userName});
+        		
+        	$.ajax({
+        		type : 'GET',
+       	 		url: '/instantChat/timeLimit',
+        		async : true,	
+        		success: function(data){
+        			instantChatTimeLimitInterval = data.chatTimeLimitInterval;
+        			followingChoiceTimeLimitInterval = data.followingChoiceTimeLimitInterval;
+        		}
+            });
+    	}
+    }
+  
+    function matchingSubmit(e){
+        e.preventDefault(); 
+        let form = $('.matching-form');
+    	let url = '/stage/matching';
+    	  
+		$.ajax({
+       	    type : 'GET',
+       	    url: url,
+        	data: form.serialize(), 
+        	async : true,	
+        	success: function(data){
+        		$('.matching-container').html('');
+        		
+        		if(data.length == 0){
+        			alert('현재 스테이지 상에 매칭 후보가 존재하지 않습니다.');
+        				
+        			$('.matching-container').html(matchingSelectContainer);
+	       			$('input[name="limit"]').val(matchingCandidateCnt);
+        			$('.matching-form').bind('submit', function(e){
+        				matchingSubmit(e);
+        			});
+        		}else{
+  	        	    for(let matchingUser of data){
+    	    			$('.matching-container').html(
+      	  				    '<div class=\"matching-people\">'
+        					+ '<div class=\"matching-img\">'
+        					  +	'<img src=\"' + matchingUser.image + '\">'
+        					+ '</div>'
+        				 	+ '<div>'
+        			 		  + '<p>' + matchingUser.email + '</p>'
+        			 		+ '</div>'
+        			 		+ '<div>'
+        				 	  + '<button type="button" data-username=\"' + matchingUser.email + '\"  class=\"btn btn-primary btn-lg btn-outline-light matching-req-btn\"> OK </button>'
+        				 	+ '</div>'
+        				 	+ '<div>'
+    				 		  + '<button type="button" class=\"btn btn-primary btn-lg btn-outline-light matching-deny-btn\"> NO </button>'
+    				 		+ '</div>'
+        				  + '</div>');
+          			}
+          
+          			$('.matching-req-btn').bind('click', function(){
+					    let matchedUser = $('.matching-req-btn').attr('data-username');
+									
+						$.ajax({
+		    	    	    type : "POST",
+		    	      	    url: "/stage/matching",
+		    	       	 	contentType: "application/json",
+		    	     	   	data: JSON.stringify({
+							    'to' : matchedUser, 
+								'messageType' : codeBook.matchingMessageTypes.REQUEST
+							}), 
+		    	      	    async : true
+          				 });
+			    			
+						 $('.matching-container').html(matchingSelectContainer);
+			       		 $('input[name="limit"]').val(matchingCandidateCnt);
+
+			       	  	 $('.matching-form').bind('submit', function(e){
+			       	  	 	matchingSubmit(e);
+			       	  	 });
+          			});
+          			
+          			$('.matching-deny-btn').bind('click', function(){
+          				$('.matching-container').html(matchingSelectContainer);
+		       			$('input[name="limit"]').val(matchingCandidateCnt);
+
+		       	  		$('.matching-form').bind('submit', function(e){
+		       	  	 		matchingSubmit(e);
+		       	  		});
+          			});
+        		 }  
+    		 }
+        });  
+    }
+    		
+  	  	
+    function handleMatchingMessage(message){
+    			
+        if(message.messageType === codeBook.matchingMessageTypes.REQUEST && !isInstantChatStarted){
+    				
+    	    $('.chat-matching-determine-btn').attr('data-username', message.from.email);
+    		$('#chat-matching-user-img').attr('src', message.from.image);
+			$('#chat-matching-user-info').html('<h4>' + message.from.email + '</h4>');
+    						   					
+    		$('.chat-matching-modal').css('visibility', 'visible');
+    	}else if(message.messageType === codeBook.matchingMessageTypes.ACCEPT && !isInstantChatStarted){
+	    	instantChatRoomId = message.roomId;
+	    	instantChatPartnerId = message.partnerId;
+			isInstantChatStarted = true;
+						
+    	  	instantChatSubscription = stompClient.subscribe('/stage/chat/' + instantChatRoomId, function(response) {
+    	    		
+    	  	    let payload = JSON.parse(response.body);
+    	  		
+    	        if(payload.messageType === codeBook.commonMessageTypes.NOTICE){
+			        alert(payload.text);
+			        instantChatSubscription.unsubscribe();
+				    
+				    instantChatSubscription=null;
+				    instantChatRoomId = null;
+				    instantChatPartnerId = null;
+				    		
+    	        }else if(payload.messageType === codeBook.commonMessageTypes.ECHO){
+    	            if(payload.from === userName){
+    	        	    $('#instant-chat-msg-history').append(
+    	        				  '<div class="outgoing_msg">'
+    	        					+ '<div class="sent_msg">'
+    	        						+ '<p>' + payload.text + '</p>'
+    	        					+ '</div>'
+    	        				+ '</div>'
+    	        	    );
+    	            }else{
+    	        	    $('#instant-chat-msg-history').append(
+    	        		          '<div class="incoming_msg">'
+    	        					+ '<div class="incoming_msg_img">'
+    	        						+	'<img src="'+ payload.fromImage +'">' 
+    	        					+ '</div>'
+    	        					+ '<div class="received_msg">'
+    	        						+ '<div class="received_withd_msg">'
+    	        							+ '<p>' + payload.text + '</p>' 
+    	        						+	'<span class="instant-chat-matched-user">' + payload.from + '</span> </div>'
+    	        					+ '</div>'
+    	        			    + '</div>'
+    	        	    );
+    	            }
+    	            $('#instant-chat-msg-history').scrollTop($('#instant-chat-msg-history')[0].scrollHeight);
+    	        }else{
+    	    	    if(payload.messageType === codeBook.commonMessageTypes.NOTICE){
+    	    		    alert(payload.text);
+    	    	    }else{
+    	    		    // report error
+    	    	    }
+    	        }
+    	    });
+
+    	    $('.mfp-container').css('display', 'none');
+    	  	$('.mfp-wrap').css('display', 'none');
+    	  	$('.mfp-bg').css('display', 'none');
+
+
+    	    $('#instant-chat-container').modal({
+      		    fadeDuration: 50,
+      			escapeClose: false,
+      			clickClose : false,
+      			height : 800,
+      		    width : 700,
+      	        modal : true 
+    		});
+    	  		
+    	  	alert(instantChatTimeLimitInterval + INSTANT_CHAT_INFO_MSG);
+    	  	
+    	  	stageTimer = setInterval(function(){
+    	  	    instantChatTimeOut();
+    	  	}, (instantChatTimeLimitInterval * 1000));
+							
+    	}else if(message.messageType === codeBook.matchingMessageTypes.DENY && !isInstantChatStarted){
+    	    alert(message.from.email + '님 으로부터 대화 신청 거절당했습니다.');
+    				
+    	}else if(message.messageType === codeBook.matchingMessageTypes.EXCEPTION && !isInstantChatStarted){
+    		alert('상대방과의 연결이 끊어졌습니다.');	
+    	}else {
+    		// report error to server
+    	}
+    }
+    		
+    function instantChatTimeOut(){
+    	$.ajax({
+    		type : "POST",
+		    url: "/stage/chat/timeout",
+		    contentType: "application/json",
+	     	data: JSON.stringify({
+			    'roomId' : instantChatRoomId
+			}), 
+		    async : true
+    	});
+    			
+    	isInstantChatStarted = false;
+    	clearInterval(stageTimer);
+					
+    	$('#instant-chat-container').modal('close');
+    	$('#following-modal').css('visibility', 'visible');
+    	$('.following-determine-btn').attr('data-username', instantChatPartnerId);
+    			
+    	followingChoiceTimer = setInterval(function(){
+    	    followingChoiceTimeOut(); 
+    	}, (followingChoiceTimeLimitInterval + 1) * 1000);
+    	  	
+    	alert(followingChoiceTimeLimitInterval + FOLLOWING_CHOICE_INFO_MSG);
+    }
+    	
+    function followingChoiceTimeOut() {
+	    clearInterval(followingChoiceTimer);
+
+    	if(!isFollowingChoiced){
+            $('#following-modal').css('visiblility', 'hidden');
+						
+    		$('.mfp-container').css('display', 'inline-block');
+    	    $('.mfp-wrap').css('display', 'inline-block');
+    		$('.mfp-bg').css('display', 'inline-block');
+						
+    		$.ajax({
+    		    type : 'POST',
+    		    url : "/stage/chat/following",
+    			contentType : "application/json",
+    			data : JSON.stringify({
+    			    'roomId' : instantChatRoomId,
+    				'follow' : false
+    			}),
+    			async : true
+    		});
+    	}else{
+    		isFollowingChoiced = false;
+    	}
+    }
+    		
+    function exitStage() {
+    	if(stageSubscription){
+    		stageSubscription.unsubscribe();
+            stageSubscription = null;
+    	}
+    	
+    	if(stageQueueSubscription){
+    		stageQueueSubscription.unsubscribe();
+    		stageQueueSubscription = null;
+    	}
+    			
+    	if(instantChatSubscription){
+    		instantChatSubscription.unsubscribe();
+    		instantChatSubscription = null;
+    	}
+     	$('#stage-chat-msg-history').html('');
+    }
+    	
+    function showStageMessage(message) {
+        if(message.messageType === codeBook.commonMessageTypes.NOTICE){
+    		$('#stage-chat-notice-msg').html('<p>' + message.text + '</p>');
+    	}else {
+            if(message.from === userName){
+        		$('#stage-chat-msg-history').append(
+        			      '<div class="outgoing_msg">'
+        					+ '<div class="sent_msg">'
+        						+ '<p>' + message.text + '</p>'
+        					+	'</div>'
+        				+ '</div>'
+        		);
+        	}else{
+        		$('#stage-chat-msg-history').append(
+        					'<div class="incoming_msg">'
+        					+	'<div><span>' + message.from +'</span></div>'
+        					+ '<div class="received_msg">'
+        						+ '<div class="received_withd_msg">'
+        							+ '<p>' + message.text + '</p>'
+        						+ '</div>'
+        					+ '</div>'
+        				+ '</div>'
+        		);
+        	}
+        		
+        	$('#stage-chat-msg-history').scrollTop($('#stage-chat-msg-history')[0].scrollHeight);
+    	}
+    }
+    		
+    function showChatMessage(message){
+    	if(message.from === userName){
+    		$('#chat-msg-history').append(
+    		         '<div class="outgoing_msg">'
+    					+ '<div class="sent_msg">'
+    						+ '<p>' + message.text + '</p>'
+    					+	'</div>'
+    				+ '</div>'
+    		);
+    	}else{
+    		$('#chat-msg-history').append(
+    					'<div class="incoming_msg">'
+    					+ '<div class="incoming_msg_img">'
+    						+	'<img src="'+ message.fromImage +'">' 
+    					+  '</div>'
+    					+ '<div class="received_msg">'
+    						+ '<div class="received_withd_msg">'
+    							+ '<p>' + message.text + '</p>' 
+    					+ '</div>'
+    				+ '</div>'
+    		);
+    	}
+    		
+    	$('#chat-msg-history').scrollTop($('#chat-msg-history')[0].scrollHeight);
+	}    		
+});
+    </script>
+  </head>
+  <body id="page-top">
+
+    <!-- Navigation -->
+    <nav id="mainNav" class="navbar navbar-expand-lg bg-secondary fixed-top text-uppercase" >
+      <div class="container">
+        <a class="navbar-brand js-scroll-trigger" href="#page-top">C A T C H</a>
+        <button class="navbar-toggler navbar-toggler-right text-uppercase bg-primary text-white rounded" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+          Menu
+          <i class="fas fa-bars"></i>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+          <ul class="navbar-nav ml-auto">
+          	<li class="nav-item mx-0 mx-lg-1">
+            	<a class="nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger" id="link-to-chat">Chat Rooms</a>
+           	</li>
+           	<li class="nav-item mx-0 mx-lg-1">
+           	 <a class="nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger"  id="link-to-main">Main</a>
+           	</li>
+           	<li class="nav-item mx-0 mx-lg-1">
+            	<a class="nav-link py-3 px-0 px-lg-3 rounded js-scroll-trigger logout-link" href="#">Logout</a>
+           	</li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <form class="logout-form" method="post" th:action="@{/logout}" >
+    </form>
+
+    <!-- Section -->
+    <section class="masthead bg-primary text-white text-center" id="main-section">
+    <div class="main-section-container">
+      <br>
+      <div class="container">
+        <img class="img-fluid mb-5 d-block mx-auto"  src="/asset/couple.png" alt="couple image">
+        <h1 class="text-uppercase mb-0">C A T C H</h1>
+        <hr class="star-light">
+        <h2 class="font-weight-light mb-0">스테이지에 입장하시겠습니까</h2>
+      </div><br>
+
+    	<div class="text-center mt-4">
+        <a class="btn btn-xl btn-outline-light stage-link" href="#stage-modal">
+            Go To Stage
+        </a>
+      </div>
+		 </div>
+		 
+  <div class="chat-section-container">
+				<h3 class=" text-center">Messaging</h3>
+				<div class="messaging">
+      		<div class="inbox_msg">
+        		<div class="inbox_people">
+         			<div class="inbox_chat">
+         			</div>
+        		</div>
+        		<div class="chat-mesgs">
+         			<div class="msg_history" id="chat-msg-history">
+          		
+          		</div>
+         			<div class="chat_type_msg">
+           			<div class="input_msg_write">
+             			<input type="text" class="write_msg" id="chat-write-msg" placeholder="Type a message" />
+             			<button class="msg_send_btn" type="button" id="chat-msg-send-btn"><i class="fa fa-paper-plane-o" aria-hidden="true"></i></button>
+         				</div>
+       				</div>
+       			</div>
+     			</div>
+    		</div>
+    	</div>
+    </section>
+		 
+		 
+    <div class="copyright py-4 text-center text-white">
+      <div class="container">
+        <small>Copyright &copy; CATCH.corp 2018</small>
+      </div>
+    </div>
+
+    <!-- Scroll to Top Button (Only visible on small and extra-small screen sizes) -->
+    <div class="scroll-to-top d-lg-none position-fixed ">
+      <a class="js-scroll-trigger d-block text-center text-white rounded" href="#page-top">
+        <i class="fa fa-chevron-up"></i>
+      </a>
+    </div>
+    
+    <!-- Matching determine modal -->
+    <div class="chat-matching-modal" id="chat-matching-modal">
+    	<img  id="chat-matching-user-img" class="chat-matching-user-img">
+    	<div class="chat-matching-user-info" id="chat-matching-user-info"></div>
+    	<div class="chat-matching-determine-btn-div">
+    		<button type="button" value="${codeBook.matchingMessageType.ACCEPT}" data-username="" id="chat-matching-accept-btn" class="btn btn-primary btn-lg btn-outline-light chat-matching-determine-btn"> Accept </button>
+    	</div>    
+    	<div class="chat-matching-determine-btn-div">
+   			<button type="button" value="${codeBook.matchingMessageType.DENY}" data-username="" id="chat-matching-deny-btn" class="btn btn-primary btn-lg btn-outline-light chat-matching-determine-btn"> Deny </button>
+    	</div>
+    </div>
+    
+    <!-- Adding following determine modal -->
+    <div class="following-modal" id="following-modal">
+    	<img  id="following-user-img" class="following-user-img">
+    	<div class="following-user-info" id="following-user-info"></div>
+    	<div class="following-determine-btn">
+    		<button type="button" value="${codeBook.matchingMessageType.ACCEPT}" data-username="" id="following-accept-btn" class="btn btn-primary btn-lg btn-outline-light following-determine-btn"> Accept </button>
+    	</div>    
+    	<div class="following-determine-btn">
+   			<button type="button" value="${codeBook.matchingMessageType.DENY}" data-username="" id="following-deny-btn" class="btn btn-primary btn-lg btn-outline-light following-determine-btn"> Deny </button>
+    	</div>
+    </div>
+    
+    <!-- Stage modal -->
+     
+    <div class="stage-modal mfp-hide" id="stage-modal">
+        <div class="stage-modal-dialog bg-white"> 
+        <div class="container text-center">
+          <div class="row">
+            <div class="col-lg-8 mx-auto">
+              <h2 class="text-secondary text-uppercase mb-0">S T A G E</h2>
+              <hr class="star-dark mb-5">
+            </div>
+          </div>
+       </div>
+       <div class="matching-container">
+       		<div class="matching-select-container">
+              <form class="matching-form" th:object="${matchingCriteria}">
+              <div class="form-group" id="genderChoiceDiv">
+              	<label for="genderChoiceDiv">원하는 상대방의 성별을 고르세요.</label>
+               	<select class="form-control" id="genderSelect"  th:field="*{gender.gender}">
+                  <option th:each="gender : ${codeBook.gender}" th:text="${gender.code}" th:value="${gender.name}"></option>
+              	</select>
+              </div>
+              
+              <div class="form-group">
+              <label for="gradeChoiceDiv">선호하는 학년과 중요도 점수를 고르세요.</label>
+              <select class="form-control" id="gradeSelect"  th:field="*{grade.grade}">
+                  <option th:each="grade : ${codeBook.grade}" th:text="${grade.code}" th:value="${grade.name}"></option>
+              </select>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="gradeWeightCheckbox1" th:field="*{grade.weight}" value="1" checked>
+                  <label class="form-check-label" for="gradeWeightCheckbox1">1</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="gradeWeightCheckbox2" th:field="*{grade.weight}" value="2">
+                  <label class="form-check-label" for="gradeWeightCheckbox2">2</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="gradeWeightCheckbox3" th:field="*{grade.weight}" value="3">
+                  <label class="form-check-label" for="gradeWeightCheckbox3">3</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="gradeWeightCheckbox4" th:field="*{grade.weight}" value="4">
+                  <label class="form-check-label" for="gradeWeightCheckbox4">4</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="gradeWeightCheckbox5" th:field="*{grade.weight}" value="5">
+                  <label class="form-check-label" for="gradeWeightCheckbox5">5</label>
+                </div>
+              </div>
+
+              <div class="form-group" id="majorChoiceDiv">
+              <label for="majorChoiceDiv">선호하는 전공과 중요도 점수를 고르세요.</label>
+
+              <select class="form-control" id="majorSelect"  th:field="*{major.major}">
+              	  <option th:each="major : ${codeBook.major}" th:text="${major.code}" th:value="${major.name}">
+              	  </option>
+              </select>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="majorWeightCheckbox1" th:field="*{major.weight}" value="1" checked>
+                  <label class="form-check-label" for="majorWeightCheckbox1">1</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="majorWeightCheckbox2"  th:field="*{major.weight}" value="2">
+                  <label class="form-check-label" for="majorWeightCheckbox2">2</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="majorWeightCheckbox3"  th:field="*{major.weight}" value="3">
+                  <label class="form-check-label" for="majorWeightCheckbox3">3</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="majorWeightCheckbox4"  th:field="*{major.weight}" value="4">
+                  <label class="form-check-label" for="majorWeightCheckbox4">4</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="majorWeightCheckbox5"  th:field="*{major.weight}" value="5">
+                  <label class="form-check-label" for="majorWeightCheckbox5">5</label>
+                </div>
+             </div>
+
+              <div class="form-group" id="loveStyleChoiceDiv">
+              <label for="loveStyleChoiceDiv">선호하는 연애 스타일과 중요도 점수를 고르세요.</label>
+
+              <select class="form-control" id="loveStyleSelect"  th:field="*{loveStyle.loveStyle}">
+              	  <option th:each="loveStyle : ${codeBook.loveStyle}" th:text="${loveStyle.code}" th:value="${loveStyle.name}">
+              	  </option>
+              </select>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="loveStyleWeightCheckbox1"  th:field="*{loveStyle.weight}" value="1" checked>
+                  <label class="form-check-label" for="loveStyleWeightCheckbox1">1</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="loveStyleWeightCheckbox2" th:field="*{loveStyle.weight}" value="2">
+                  <label class="form-check-label" for="loveStyleWeightCheckbox2">2</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="loveStyleWeightCheckbox3" th:field="*{loveStyle.weight}" value="3">
+                  <label class="form-check-label" for="loveStyleWeightCheckbox3">3</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="loveStyleWeightCheckbox4" th:field="*{loveStyle.weight}" value="4">
+                  <label class="form-check-label" for="loveStyleWeightCheckbox4">4</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="loveStyleWeightCheckbox5" th:field="*{loveStyle.weight}" value="5">
+                  <label class="form-check-label" for="loveStyleWeightCheckbox5">5</label>
+                </div>
+             </div>
+            <input type="hidden" name="limit" th:field="*{limit}" value="">
+             
+            <div class="form-row justify-content-center">
+              <button type="submit" class="btn btn-primary btn-lg btn-outline-light" id="matching-btn"> 매 칭 시 작 </button>
+             </div>
+            </form>
+          </div>
+        </div>
+        
+      <div class="stage-chat-container">
+  			<div class="messaging">
+    			<div class="inbox_msg">
+      			<div class="notice_msg" id="stage-chat-notice-msg">
+          
+      			</div>
+    				<div class="mesgs">
+      				<div class="msg_history" id="stage-chat-msg-history">
+      				</div>
+      				<div class="type_msg">
+        				<div class="input_msg_write">
+          				<input type="text" class="write_msg" id="stage-chat-write-msg" placeholder="Type a message" />
+          				<button class="msg_send_btn" type="button" id="stage-chat-msg-send"><i class="fa fa-paper-plane-o" aria-hidden="true"></i></button>
+        				</div>
+      				</div>
+    				</div>
+  				</div>
+  			</div>
+  		</div>
+  	</div>
+  </div>
+  <div class="instant-chat-container modal" id="instant-chat-container">
+  	<div class="messaging">
+      <div class="inbox_msg">
+        <div class="mesgs" id="instant-chat-mesgs">
+          <div class="msg_history" id="instant-chat-msg-history">
+ 
+          </div> 
+          <div class="type_msg" id="instant-chat-type-msg">
+            <div class="input_msg_write" id="instant-chat-msg-write">
+              <input type="text" class="write_msg" id="instant-chat-write-msg" placeholder="Type a message" />
+              <button class="msg_send_btn" type="button" id="instant-chat-msg-send"><i class="fa fa-paper-plane-o" aria-hidden="true"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>    
+ </body>
+</html>
