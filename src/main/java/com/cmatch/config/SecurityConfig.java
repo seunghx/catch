@@ -28,12 +28,27 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.csrf().disable().authorizeRequests().antMatchers("/asset/**").permitAll().antMatchers("/css/**")
-                .permitAll().antMatchers("/fonts/**").permitAll().antMatchers("/js/**").permitAll()
-                .antMatchers("/vendor/**").permitAll().antMatchers("/**").authenticated().and().formLogin()
-                .loginPage("/user/login").permitAll().loginProcessingUrl("/login").usernameParameter("email")
-                .passwordParameter("password").defaultSuccessUrl("/", true).failureUrl("/user/login").and().logout()
-                .clearAuthentication(true).invalidateHttpSession(true).logoutUrl("/logout")
+        http.csrf().disable()
+            .authorizeRequests()
+                .antMatchers("/asset/**").permitAll()
+                .antMatchers("/css/**").permitAll()
+                .antMatchers("/fonts/**").permitAll()
+                .antMatchers("/js/**").permitAll()
+                .antMatchers("/vendor/**").permitAll()
+                .antMatchers("/**").authenticated()
+                .and()
+            .formLogin()
+                .loginPage("/user/login").permitAll()
+                .loginProcessingUrl("/login")
+                    .usernameParameter("email")
+                    .passwordParameter("password")
+                .defaultSuccessUrl("/", true)
+                .failureUrl("/user/login")
+                .and()
+            .logout()
+                .clearAuthentication(true)
+                .invalidateHttpSession(true)
+                .logoutUrl("/logout")
                 .logoutSuccessUrl("/user/login").permitAll();
     }
 

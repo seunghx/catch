@@ -3,7 +3,6 @@
 			xmlns:th="http://www.thymeleaf.org">
   <head>
     <meta charset="utf-8">
-
     <title>C A T C H</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
     <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
@@ -14,11 +13,10 @@
     
     <link href="/vendor/index/magnific-popup/magnific-popup.css" rel="stylesheet" type="text/css">
 	<link href="/css/index/index.min.css" rel="stylesheet">
-    <link href="/css/index/stage.css" rel="stylesheet">
+    <link href="/css/index/chat.css" rel="stylesheet">
 	<link href="/css/index/freelancer.min.css" rel="stylesheet">
 	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" type="text/css" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
-		
 		
     <script src="/vendor/index/jquery/jquery.min.js"></script>
     <script src="/vendor/index/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -29,7 +27,6 @@
 		
 	<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 	<script src="/js/stomp.js"></script>
-	  
     <script src="/js/index/index.min.js"></script>
    	<script src="/js/index/jqBootstrapValidation.js"></script>
     
@@ -39,8 +36,10 @@
 	
     const INSTANT_CHAT_INFO_MSG = "초 동안 채팅 후 친구 추가를 할 지 결정할 수 있습니다. 화이팅!";
     const FOLLOWING_CHOICE_INFO_MSG = "초 동안 팔로우 여부를 결정하지 않을 경우 자동 취소됩니다.";
-    	
+    
+    let msgCntPerPage = 30;
     let matchingCandidateCnt = 1;
+    
     let stompClient = null;
     let userName = null;
     let stageSubscription = null;
@@ -54,33 +53,42 @@
 	let followingChoiceTimer = null;
     let instantChatPartnerId = null;
 	let stageTimer = null;
-	let roomList = null;
-	let curRoomName = null;
+	let curRoom = null;
 	let subscriptions = [];
+	let chatRooms = null;
+	let lastChatRoomScrollTop = 0;
+	let oldestMessageId = null;
 			
     let isInstantChatStarted = false;
 	let isFollowingChoiced = false;
+	let isRoomInitialized = false;
+	let isMessagesLoading = false;
 			
     $(document).ready(function(){
     		
         matchingSelectContainer = $('.matching-select-container').html();
+        
         connect();
 
     	$('.logout-link').click(() => {
+            isRoomInitialized = false;
+            subscriptions = null;
+            stompClient = null;
+            
     		$(".logout-form").submit();
     	});
   			
     	$('.stage-link').magnificPopup({
-    	    type:'inline',
-    		closeOnBgClick : false,
-    		callbacks: {
-                open: function() {
-    			    enterStage();
-    		    },
-    			close: function() {
-    	   	        leaveStage();
-    			}
-    	    }
+    	   type:'inline',
+    	   closeOnBgClick : false,
+    	   callbacks: {
+               open: function() {
+    		       enterStage();
+    		   },
+    		   close: function() {
+    	   	       leaveStage();
+    		   }
+    	   }
     	});
     		    		
     	$('#chat-matching-accept-btn').click(function(){
@@ -125,7 +133,7 @@
 			clearInterval(followingChoiceTimer);
 					
     		$.ajax({
-    			type : 'POST',
+    		    type : 'POST',
 				url : '/stage/chat/following',
 				contentType : 'application/json',
 				data : JSON.stringify({
@@ -142,62 +150,66 @@
     			
     	    $.magnificPopup.open({
     	        items: {
-    	            src: '#stage-modal'
+    	            src : '#stage-modal'
     	        },
-    	        type: 'inline',
+    	        type : 'inline',
     	    });
         });
     		
         $('#following-deny-btn').click(function(){
-	    isFollowingChoiced = true;
-	    clearInterval(followingChoiceTimer);
+	       isFollowingChoiced = true;
+	       clearInterval(followingChoiceTimer);
 
-    	$.ajax({
-    	    type : 'POST',
-			url : '/stage/chat/following',
-			contentType : 'application/json',
-			data : JSON.stringify({
-				'roomId' : instantChatRoomId,
-				'follow' : false
-			}),
-			async : true
-    	});
+    	   $.ajax({
+    	       type : 'POST',
+			   url : '/stage/chat/following',
+			   contentType : 'application/json',
+			   data : JSON.stringify({
+				   'roomId' : instantChatRoomId,
+				   'follow' : false
+			   }),
+			   async : true
+    	    });
     			
-        $('#following-modal').css('visibility', 'hidden');
+            $('#following-modal').css('visibility', 'hidden');
 
-    	$('.mfp-container').css('display', 'inline-block');
-        $('.mfp-wrap').css('display', 'inline-block');
-        $('.mfp-bg').css('display', 'inline-block');
-    });
+    	    $('.mfp-container').css('display', 'inline-block');
+            $('.mfp-wrap').css('display', 'inline-block');
+            $('.mfp-bg').css('display', 'inline-block');
+        });
     		
-    $('#stage-chat-msg-send').click(function(e){
-    	let msg = $('#stage-chat-write-msg').val();
-    	stompClient.send('/stage/message', {}, JSON.stringify({'text' : msg}));
-    	$('#stage-chat-write-msg').val('');
-    });
+        $('#stage-chat-msg-send').click(function(e){
+    	    let msg = $('#stage-chat-write-msg').val();
+    	    stompClient.send('/stage/message', {}, JSON.stringify({'text' : msg}));
+    	    $('#stage-chat-write-msg').val('');
+        });
     	
-   	$('#instant-chat-msg-send').click(function(e){
-		let msg = $('#instant-chat-write-msg').val();
-		stompClient.send('/stage/chat/' + instantChatRoomId, {}, JSON.stringify({'from': userName, 'text' : msg}));
-		$('#instant-chat-write-msg').val('');
-	});
+   	    $('#instant-chat-msg-send').click(function(e){
+		    let msg = $('#instant-chat-write-msg').val();
+		    stompClient.send('/stage/chat/' + instantChatRoomId, {}, JSON.stringify({'from': userName, 'text' : msg}));
+		    $('#instant-chat-write-msg').val('');
+	    });
     		
-    $('#link-to-chat').bind('click', function(){
+        $('#link-to-chat').bind('click', function(){
         readChatRooms();
-
     	$('.main-section-container').css('display', 'none');
-    	$('.chat-section-container').css('display', 'inline-block');	
+        $('.chat-section-container').css('display', 'inline-block');	
     });
     
     $('#link-to-main').bind('click', function(){
+
         $('#chat-msg-history').html('');
+
     	$('.chat-section-container').css('display', 'none');
     	$('.main-section-container').css('display', 'inline-block');
+    	
+    	curRoom = null;
     });
     		
 	$('#chat-msg-send-btn').click(function(e){
 		let msg = $('#chat-write-msg').val();
-		stompClient.send('/chat/message/' + curRoomName, {}, JSON.stringify({'text' : msg}));
+		stompClient.send('/chat/message/' + curRoom.name, {}, JSON.stringify({'text' : msg}));
+		
 		$('#chat-write-msg').val('');
 	});
 
@@ -206,7 +218,6 @@
     });
     
     function connect() {
-      console.log('called');
       let socket = new SockJS('/connect');
       socket.onclose = closeEventCallback;
 
@@ -216,8 +227,15 @@
 
       stompClient.connect({}, function(frame){
     	  userName = frame.headers['user-name'];    
+    	  
+    	  $.ajax({
+              type : 'GET',
+              url : "/chatRooms",
+              success : function(rooms){
+            	  chatRooms = rooms;
+              }
+    	  });
       });
-      
     }
     
     function closeEventCallback(e){
@@ -225,57 +243,144 @@
     }
     
     function readChatRooms(){
-    			
-        $.ajax({
-		    type : 'GET',
-		    url : "/chatRooms",
-			success : function(rooms){
-							
-			    $('.inbox_chat').html('');
+        lastChatRoomScrollTop = 0;
+        
+        if(!isRoomInitialized){
+        	            
+            for(let room of chatRooms) {
+            	
+        	    room.isAllMessageLoaded = false;
+        		room.messageCnt = 0;
+        		
+        	    let subscription = stompClient.subscribe('/topic/' + room.name, function(message){
+        	    	room.messageCnt = room.messageCnt + 1;
+        	    	
+        	    	if(curRoom.name === room.name){
+                        showChatMessage(JSON.parse(message.body), true);
+        	    	}else{
+        	    		// 알림.
+        	    		
+        	    		/*
+        	    	      if chat 화면, 
+        	    	          if currentRoom,
+        	    	          else,
+        	    	      else if main화면 ,
+        	    		*/
+        	    	}
+        	    });
+        	    
+                subscriptions.push(subscription);
+                
+                let user = null;
+                        
+                if(room.user1.email === userName){
+                    user = room.user2
+                }else{
+                    user = room.user1
+                }
+                
+                $('.inbox_chat').append(
+                        '<div class="chat_list" id="'+ room.name +'">'
+                            + '<div class="chat_people">'
+                                + '<div class="chat_img"> <img src="' + user.image + '"> </div>'
+                                    + '<div class="chat_ib"> '
+                                        + '<h5>' + user.email + '</h5>'
+                                + '</div>'
+                            + '</div>'
+                      + '</div>');
+                
+                $('#chat-msg-history').bind('scroll', function(e){
+                	
+                	
+                    if(!isMessagesLoading && !curRoom.isAllMessageLoaded) { 
+                        isMessagesLoading = true;
+                        
+                        let curScrollTop = $('#chat-msg-history')[0].scrollTop;
+                        let scrollTopDiff = curScrollTop - lastChatRoomScrollTop;
+                        lastChatRoomScrollTop = curScrollTop;
+                    
+                        if(scrollTopDiff < 0 && curScrollTop <= 30){
+                            readChatMessages(curRoom, true, false);           
+                        }else{
+                            isMessagesLoading = false;
+                        }
+                    }
+                });
+            }            
+            
+            isRoomInitialized = true;
 
-			    for(let room of rooms){
-							  	
-			        let subscription = stompClient.subscribe('/topic/' + room.name, function(data){
-			            showChatMessage(JSON.parse(data.body));
-					});
-													
-					subscriptions.push(subscription);
-							
-					let user = null;
-						
-					if(room.user1.email === userName){
-						user = room.user2
-					}else{
-						user = room.user1
-					}
-								
-					$('.inbox_chat').append(
-									'<div class="chat_list" data-room-name="'+ room.name +'">'
-									   + '<div class="chat_people">'
-					              		+ '<div class="chat_img"> <img src="' + user.image + '"> </div>'
-					            		+ '<div class="chat_ib"> '
-					              		 + '<h5>' + user.email + '</h5>'
-					              		+ '</div>'
-					           		   + '</div>'
-					          	  + '</div>');
-				}
-							
-				curRoomName = rooms[0].name;
-				roomList = rooms;
+            $('.chat_list').bind('click', function(e){
 
-				$('.chat_list').bind('click', function(){
-					$('.chat_list').attr('class', "chat_list");
-					$(this).attr('class', 'chat_list active_chat');
-					$('#chat-msg-history').html('');
-				});
-			},
-		    error: function (request, status, error) {
-		        alert(request.responseText);
-				alert(status);
-		    }
-		});
+                lastChatRoomScrollTop = 0;
+                curRoom.messageCnt = 0;
+                curRoom.isAllMessageLoaded = false;
+                
+                $('#chat-msg-history').html('');
+                
+                for(let chatRoom of chatRooms){
+                	if(chatRoom.name === $(this).attr('id')){
+                		curRoom = chatRoom;
+                		break;
+                	}
+                }
+                
+                readChatMessages(curRoom, false, true);           
+            	
+                $('.chat_list').attr('class', 'chat_list');
+                $(this).attr('class', 'chat_list active_chat');
+                
+            });
+        }
+        
+        curRoom = chatRooms[0];
+        
+        $('#' + curRoom.name).attr('class', 'chat_list active_chat');
+        
+        isMessagesLoading = true;
+        
+        readChatMessages(curRoom, false, true);
     }
+    
+    function readChatMessages(curRoom, oldestMessage, isAppend){
     	
+        isMessagesLoading = true;
+
+    	let msgGetUrl = '/chatMessages?roomName=' + curRoom.name + '&msgCntPerPage=' + msgCntPerPage;
+    	
+    	if(oldestMessage){
+    		msgGetUrl = msgGetUrl.concat('&oldestMessageId=' + oldestMessageId);
+    	}
+    	
+        $.ajax({
+            type : 'GET',
+            url: msgGetUrl,
+            async : true,   
+            success: function(messages){
+                
+                messages.forEach((message, index) => {
+                    showChatMessage(message, isAppend);
+                    curRoom.messageCnt = curRoom.messageCnt + 1;
+
+                    if(index === messages.length-1){
+                       
+                        if(oldestMessage){
+                            lastChatRoomScrollTop = $('#chat-msg-history')[0].scrollHeight * (messages.length / curRoom.messageCnt); 
+                             
+                            $('#chat-msg-history').scrollTop(lastChatRoomScrollTop);
+                        }
+                        
+                        oldestMessageId = message.id;
+                        isMessagesLoading = false;
+                    }
+                });
+            }, 
+            error : function(err){
+            	isMessagesLoading = false;
+            }
+        });
+    }
+    
     function enterStage() {
     	if(stompClient){
     	  	$('input[name="limit"]').val(matchingCandidateCnt);
@@ -283,7 +388,6 @@
           	stageSubscription = stompClient.subscribe('/stage', function(response) {
           		showStageMessage(JSON.parse(response.body));
          	}, {id : codeBook.subscriptionModes.STAGE + '-topic-' + userName});
-            console.log(stageSubscription);
           	stageQueueSubscription = stompClient.subscribe('/user/queue/stage', function(response){
         		handleMatchingMessage(JSON.parse(response.body))
         	}, {id : codeBook.subscriptionModes.STAGE + '-queue-' + userName});
@@ -310,7 +414,7 @@
        	    url: url,
         	data: form.serialize(), 
         	async : true,	
-        	success: function(data){
+        	success: function(users){
         		$('.matching-container').html('');
         		
         		if(data.length == 0){
@@ -322,7 +426,7 @@
         				matchingSubmit(e);
         			});
         		}else{
-  	        	    for(let matchingUser of data){
+  	        	    for(let matchingUser of users){
     	    			$('.matching-container').html(
       	  				    '<div class=\"matching-people\">'
         					+ '<div class=\"matching-img\">'
@@ -467,7 +571,7 @@
     	    alert(message.from.email + '님 으로부터 대화 신청 거절당했습니다.');
     				
     	}else {
-    		// report error to server
+    		// report error
     	}
     }
     		
@@ -554,13 +658,13 @@
         	}else{
         		$('#stage-chat-msg-history').append(
         					'<div class="incoming_msg">'
-        					+	'<div><span>' + message.from +'</span></div>'
+        					+ '<div><span>' + message.from +'</span></div>'
         					+ '<div class="received_msg">'
         						+ '<div class="received_withd_msg">'
         							+ '<p>' + message.text + '</p>'
         						+ '</div>'
         					+ '</div>'
-        				+ '</div>'
+        				 + '</div>'
         		);
         	}
         		
@@ -568,17 +672,18 @@
     	}
     }
     		
-    function showChatMessage(message){
-    	if(message.from === userName){
-    		$('#chat-msg-history').append(
+    function showChatMessage(message, isAppend){
+    	if(isAppend){
+    	    if(message.from === userName){
+    		    $('#chat-msg-history').append(
     		         '<div class="outgoing_msg">'
     					+ '<div class="sent_msg">'
     						+ '<p>' + message.text + '</p>'
     					+	'</div>'
     				+ '</div>'
-    		);
-    	}else{
-    		$('#chat-msg-history').append(
+    		    );
+    	    }else{
+    		    $('#chat-msg-history').append(
     					'<div class="incoming_msg">'
     					+ '<div class="incoming_msg_img">'
     						+	'<img src="'+ message.fromImage +'">' 
@@ -588,10 +693,33 @@
     							+ '<p>' + message.text + '</p>' 
     					+ '</div>'
     				+ '</div>'
-    		);
+    		    );
+    	    }
+    	    $('#chat-msg-history').scrollTop($('#chat-msg-history')[0].scrollHeight);
+    	    
+    	}else{
+    		if(message.from === userName){
+                $('#chat-msg-history').prepend(
+                     '<div class="outgoing_msg">'
+                        + '<div class="sent_msg">'
+                            + '<p>' + message.text + '</p>'
+                        +   '</div>'
+                    + '</div>'
+                );
+            }else{
+                $('#chat-msg-history').prepend(
+                        '<div class="incoming_msg">'
+                        + '<div class="incoming_msg_img">'
+                            +   '<img src="'+ message.fromImage +'">' 
+                        +  '</div>'
+                        + '<div class="received_msg">'
+                            + '<div class="received_withd_msg">'
+                                + '<p>' + message.text + '</p>' 
+                        + '</div>'
+                    + '</div>'
+                );
+            }
     	}
-    		
-    	$('#chat-msg-history').scrollTop($('#chat-msg-history')[0].scrollHeight);
 	}    		
 });
     </script>

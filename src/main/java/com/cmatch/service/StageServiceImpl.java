@@ -261,7 +261,7 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
     }
     
     private void validateStageUser(String userEmail) {
-        if(isUserExist(userEmail)) {
+        if(!isUserExist(userEmail)) {
             log.error("Illegal request detected. requested user is not on stage.");
             throw new IllegalStateException();
             // 400 error 관련 예외로 변경.

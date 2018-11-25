@@ -10,10 +10,20 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class WebsocketConnectedListener implements ApplicationListener<SessionConnectedEvent> {
 
+    
     @Override
     public void onApplicationEvent(SessionConnectedEvent event) {
         if(log.isInfoEnabled()) {
-            log.info("New session connected. Connected user : {} ", event.getUser());
+            
+            log.info("New session connected. Message : {}.", event.getMessage());
+
+            if(event.getUser() != null) {
+                log.info("Connected user : {} ", event.getUser().getName());
+            }else {
+                log.error("Unknown connected user detected."
+                        + "It might be security or precending interceptor problem.");
+                throw new IllegalStateException("Unknown connected user detected.");
+            }
         }
     }
 }

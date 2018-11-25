@@ -6,10 +6,14 @@ import com.cmatch.support.code.CommonMessageType;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 
 @Getter
-@ToString
+@Setter
+@ToString(callSuper=true)
+@NoArgsConstructor
 public class OutputMessage extends CommonMessage {
 
     private String from;

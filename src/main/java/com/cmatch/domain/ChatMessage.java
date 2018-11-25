@@ -9,9 +9,9 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
-import javax.persistence.Transient;
+import javax.persistence.Table;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import org.hibernate.annotations.CreationTimestamp;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -21,6 +21,7 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity
+@Table(name = "chat_message")
 public class ChatMessage {
 
     @Id
@@ -28,16 +29,15 @@ public class ChatMessage {
     private Integer id;
 
     @ManyToOne
+    @JoinColumn(name = "sender")
     private User sender;
-    private String message;
+    private String text;
 
-    @Column(name = "write_at")
-    @Transient
-    private LocalDateTime writeAt;
+    @CreationTimestamp
+    @Column(name = "write_time")
+    private LocalDateTime writeTime;
 
-    @JsonBackReference
     @ManyToOne
-    @JoinColumn(name = "room")
+    @JoinColumn(name = "room_id")
     private ChatRoom room;
-
 }

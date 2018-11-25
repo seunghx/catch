@@ -8,9 +8,9 @@ import lombok.ToString;
 
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 public class CommonMessage {
 
     private String text;

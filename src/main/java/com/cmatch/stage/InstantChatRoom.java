@@ -1,26 +1,21 @@
 package com.cmatch.stage;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import lombok.Getter;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 @ToString
 @Getter
+@Slf4j
 public class InstantChatRoom {
 
     private static final int INSTANT_CHATROOM_CAPACITY = 2;
     
-    private static final Logger logger = LoggerFactory.getLogger(InstantChatRoom.class);
-
     private final Map<String, Boolean> followingChoices = new HashMap<>(INSTANT_CHATROOM_CAPACITY);
     private String roomId;
     private boolean timeover;
@@ -45,7 +40,7 @@ public class InstantChatRoom {
 
     private void validateUser(String userEmail) {
         if (!followingChoices.keySet().contains(userEmail)) {
-            logger.warn("Illegal access detected. User {} is not member of this room {}.", userEmail, roomId);
+            log.warn("Illegal access detected. User {} is not member of this room {}.", userEmail, roomId);
             throw new IllegalArgumentException("User is not member of this room.");
         }
     }
