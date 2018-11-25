@@ -7,7 +7,6 @@ import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -63,7 +62,7 @@ public class StageController {
             throw new IllegalStateException("Empty subscription id detected.");
         }
 
-        log.info("User subscribing to stage registerred. Subscribing user : {}", userEmail);
+        log.info("User subscribing to stage, registered. Subscribing user : {}", userEmail);
 
         stageService.addNewUserToStage(userEmail, accessor.getSubscriptionId());
 
@@ -76,7 +75,7 @@ public class StageController {
     public void stageSubscription(Principal principal, @DestinationVariable("room") String roomId) {
 
         String userEmail = Optional.ofNullable(principal).map(prcp -> prcp.getName()).orElseThrow(() -> {
-            log.warn("Anonymous user request reached here. It might be securiy config problem.");
+            log.warn("Anonymous user request reached here. It might be securiy or preceding interceptor problem.");
 
             throw new IllegalStateException("Anonymous user request reached controller.");
         });

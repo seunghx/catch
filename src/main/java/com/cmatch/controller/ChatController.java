@@ -9,11 +9,14 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.cmatch.domain.ChatRoom;
 import com.cmatch.domain.User;
+import com.cmatch.dto.ChatMessageCriteria;
+import com.cmatch.dto.ChatOutputMessage;
 import com.cmatch.dto.CommonMessage;
 import com.cmatch.dto.OutputMessage;
 import com.cmatch.service.ChatService;
@@ -26,21 +29,24 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatController {
 
     private final UserService userService;
-    private final ChatService chatRoomService;
+    private final ChatService chatService;
 
-    public ChatController(UserService userService, ChatService chatRoomService) {
+    public ChatController(UserService userService, ChatService chatService) {
         this.userService = userService;
-        this.chatRoomService = chatRoomService;
+        this.chatService = chatService;
     }
 
     @MessageMapping("/chat/message/{room}")
     @SendTo("/topic/{room}")
-    public OutputMessage sendChatMessage(Principal principal, CommonMessage message,
-            @DestinationVariable("room") String roomName) {
+    public OutputMessage sendChatMessage(Principal principal
+                                       , CommonMessage message
+                                       , @DestinationVariable("room") String roomName) {
 
         String userEmail = principal.getName();
-
-        chatRoomService.saveChatMessage(message.getText(), userEmail, roomName);
+        
+        log.info("Saving message. Message from user {} {} {}.", message, message.getText(),  principal.getName());
+        
+        chatService.saveChatMessage(message.getText(), userEmail, roomName);
 
         User user = userService.getUser(userEmail);
 
@@ -51,12 +57,29 @@ public class ChatController {
 
     @GetMapping("/chatRooms")
     @ResponseBody
-    public ResponseEntity<List<ChatRoom>> getUserChatRooms(Principal principal) {
+    public ResponseEntity<List<ChatRoom>> getChatRooms(Principal principal) {
 
-        log.info("user {} requested list of chat rooms.", principal.getName());
+        log.info("User {} requested list of chat rooms.", principal.getName());
 
-        List<ChatRoom> chatRoomList = chatRoomService.getChatRooms(principal.getName());
+        List<ChatRoom> chatRoomList = chatService.getUserChatRooms(principal.getName());
 
         return new ResponseEntity<>(chatRoomList, HttpStatus.OK);
+    }
+    
+    @GetMapping("/chatMessages")
+    @ResponseBody
+    public ResponseEntity<List<ChatOutputMessage>> getChatMessages(Principal principal
+                                                      , @Validated ChatMessageCriteria criteria){
+        
+        if(log.isInfoEnabled()) {
+            log.info("Received message request for chat room : {} by user : {}.", principal.getName()
+                                                                                , criteria.getRoomName());
+        }
+        
+        List<ChatOutputMessage> messages = chatService.getChatMessage(principal.getName(), criteria);
+        log.error("{}",messages.size());
+        log.info("Loaded messages : {}.", messages);
+        
+        return new ResponseEntity<>(messages, HttpStatus.OK);
     }
 }
