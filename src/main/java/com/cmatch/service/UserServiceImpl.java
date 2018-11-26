@@ -1,6 +1,5 @@
 package com.cmatch.service;
 
-import java.util.Objects;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
@@ -29,20 +28,22 @@ public class UserServiceImpl implements UserService {
     
     // Methods
     // ==========================================================================================================================
-
+    
     @Override
     public void signup(UserSignupDTO signupDTO) {
-        Objects.requireNonNull(signupDTO, "Null Argument signupDTO detected.");
 
-        User user = modelMapper.map(signupDTO, User.class);
-
-        userRepository.save(user);
+        User user = Optional.ofNullable(signupDTO)
+                            .map(dto -> modelMapper.map(dto, User.class))
+                            .orElseThrow(() -> 
+                                new IllegalArgumentException("Null Argument signupDTO detected."));
+                
+        userRepository.saveAndFlush(user);
     }
 
     @Override
     public User getUser(String userEmail) {
         return Optional.ofNullable(userRepository.findByEmail(userEmail))
-                .orElseThrow(() -> new IllegalArgumentException());
+                       .orElseThrow(() -> new IllegalArgumentException());
     }
 
 }

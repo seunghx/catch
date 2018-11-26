@@ -85,9 +85,9 @@ public class ChatController {
                                                                                 , criteria.getRoomName());
         }
         
-        List<ChatOutputMessage> messages = chatService.getChatMessage(principal.getName(), criteria);
-        log.error("{}",messages.size());
-        log.info("Loaded messages : {}.", messages);
+        List<ChatOutputMessage> messages = chatService.getChatMessage(criteria);
+        
+        log.debug("Loaded messages : {}.", messages);
         
         return new ResponseEntity<>(messages, HttpStatus.OK);
     }

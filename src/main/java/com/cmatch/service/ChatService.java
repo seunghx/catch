@@ -10,7 +10,7 @@ import com.cmatch.dto.ChatOutputMessage;
 public interface ChatService {
 
     public List<ChatRoom> getUserChatRooms(String userEmail);
-    public List<ChatOutputMessage> getChatMessage(String userEmail, ChatMessageCriteria criteria);
+    public List<ChatOutputMessage> getChatMessage(ChatMessageCriteria criteria);
 
     public void createChatRoom(String roomId, User user1, User user2);
 

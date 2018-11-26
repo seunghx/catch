@@ -41,6 +41,21 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.cmatch.dto.Notification.LeaveNotification;
 
+/**
+ * 
+ * CATCH application의 stage 관련 로직을 수행한다.
+ * {@link ApplicationEventPublisherAware}를 구현하고 있음을 알 수 있는데, 
+ * {@link ChatService} 구현 클래스 등에 following established event를 전달하기 위함이다.
+ * 직접 {@link ChatService} 타입 인스턴스 필드를 두고 {@link ChatService}의 메서드를 호출하는 
+ * 방법이 더 직관적이겠으나 기능이 추가되어 {@link ChatService}를 더 분해할 때 예를 들어, FollowService와 
+ * 같은 컴포넌트가 추가 될 수도 있는데 이럴 경우 event publishing 방법을 사용하면 그 event의 subscriber가 
+ * 누군지 알 필요가 없으므로 이 클래스의 코드의 수정이 필요 없어진다는 점과 의존 관계의 복잡성을 완화시킬 수 있다는 
+ * 점으로부터 이 인터페이스를 구현하게 되었다. 
+ * 
+ * 
+ * @author leeseunghyun
+ *
+ */
 @Slf4j
 @Service
 public class StageServiceImpl implements StageService, ApplicationEventPublisherAware {
@@ -74,15 +89,14 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
      * instant chat 종료 후 following 결정하기 까지에 대한 시간 여유분.
      * 
      * instant chat이 종료되었음을 알리는 요청 이후 {@code instantChatTimeoverSpareSec} 시간 내에
-     * following 결정 요청이 전달되지 않을 경우(네트워크 문제, 사용자 서비스 종료 등의 이유로.) following 실패처리를 하게
-     * 된다.
+     * following 결정 요청이 전달되지 않을 경우(네트워크 문제, 사용자 서비스 종료 등의 이유로.) following 실패 처리를 
+     * 하게 된다.
      * 
      * 프론트엔드에서 매칭이 성립 되어 두 사용자가 instant chat을 수행할 때 서버로 instant chat이 시작되었음을 알리고
-     * 서버에서 {@link java.util.Timer}나
-     * {@link java.util.concurrent.ScheduledExecutorService} 등을 이용하여 시간이 지나면 프론트엔드로
-     * instant chat 제한 시간이 지났음을 알리는 방법도 있으나 이럴 경우 사용자가 실제로 instant chat을 이용하는 시간과
-     * 서버가 instant chat 종료를 위해 지정한 시간을 제대로 맞추지 못하면 사용자에게 불만이 발생할 가능성이 있어 instant
-     * chat에 대한 타이머 설정은 프론트 엔드에서 수행하게 하였다.
+     * 서버에서 {@link java.util.Timer}나 {@link java.util.concurrent.ScheduledExecutorService} 등을 
+     * 이용하여 시간이 지나면 프론트엔드로 instant chat 제한 시간이 지났음을 알리는 방법도 있으나 이럴 경우 사용자가 실제로 
+     * instant chat을 이용하는 시간과 서버가 instant chat 종료를 위해 지정한 시간을 제대로 맞추지 못하면 사용자에게 불만이 
+     * 발생할 가능성이 있어 instant chat에 대한 타이머 설정은 프론트 엔드에서 수행하게 하였다.
      * 
      */
     @Value("${instantChat.timeoverSpare.sec}")
@@ -114,12 +128,17 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
         users.put(email, candidate);
     }
 
+    /**
+     * Stage 상의 user 정보를 삭제하며 해당 유저가 Instant Chat 중인 경우 
+     * 해당 Instant Chat Room 정보를 삭제한다.
+     */
     @Override
     public void deleteUserFromStage(String email) {
         if(StringUtils.isEmpty(email)) {
             log.error("Empty user email detected. "
                                     + "Checking security or preceding object codes required.");
         }
+        
         users.remove(email);
         
         chatRooms.entrySet()
@@ -133,9 +152,10 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
     public void addUserToBlackList(String userEmail, String blockedUser) {
         users.get(userEmail).getBlackList().add(blockedUser);
     }
-
+    
     /**
-     * stage상에 존재않는 user의 요청인지 확인하기.
+     * 매칭 동작은 간단히 매칭 요청 정보를 담고 있는 {@code criteria}를 기반으로 
+     * 각 항목의 weight 곱의 합이 최대가 되는 유저를 찾는 것이다.
      */
     @Override
     public List<User> matching(String userEmail, MatchingCriteria criteria) {
@@ -187,8 +207,11 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
 
         log.info("Received matching request : {}", matchingRequest.getMessageType());
 
+        validateStageUser(userEmail);
+        
         if (!users.containsKey(matchingRequest.getTo())) {
-           log.debug("Unknown sender detected. Maybe sender just leaves stage.");
+           log.info("Unknown sender detected. Maybe sender just leaves stage.");
+           
            return;
         }
 
@@ -218,7 +241,8 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
             // users.get(userEmail).getBlackList().add(matchingRequest.getTo());
 
             CommonMatchingResponse response = new CommonMatchingResponse(MatchingMessageType.DENY,
-                    users.get(userEmail).getUser());
+                                                                         users.get(userEmail)
+                                                                              .getUser());
 
             msgTemplate.convertAndSendToUser(matchingRequest.getTo(), "/queue/stage", response);
         }
@@ -243,20 +267,32 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
         this.eventPublisher = eventPublisher;
     }
     
+    /**
+     * Stage 상에 존재하는 유저와의 Websocket session 연결이 끊켰을 경우.
+     */
     @EventListener
     public void onDisconnectEvent(SessionDisconnectEvent e) {
        handleStageLeaveEvent(e);
     }
     
+    /**
+     * 유저가 stage를 나갔을 경우.
+     */
     @EventListener
     public void onUnsubscribeEvent(SessionUnsubscribeEvent e) {
         handleStageLeaveEvent(e);
     }
     
+    /**
+     * 유저가 스테이지를 나갔을 경우(커넥션 종료, stage 나가기 버튼 클릭 등에 의해서.)
+     * stage 상의 유저 정보 삭제가 필요하며 혹시 해당 유저가 Instant Chat 중 이었을 경우 
+     * 이를 상대방에게 알릴 필요가 있다.
+     */
     private void handleStageLeaveEvent(AbstractSubProtocolEvent e) {
         if(e.getUser() == null) {
             log.error("Null value user principal detected.");
-            log.error("Cheching security or preceding object codes, required.");
+            log.error("Checking security or preceding object codes required.");
+            
             throw new IllegalStateException("User principal is null.");
         }        
         
@@ -266,14 +302,13 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
             sendLeaveMessageToChatPartners(userName);
             deleteUserFromStage(e.getUser().getName());
         }
-        
     }
     
     private void validateStageUser(String userEmail) {
         if(!isUserExist(userEmail)) {
             log.error("Illegal request detected. requested user is not on stage.");
-            throw new IllegalStateException();
-            // 400 error 관련 예외로 변경.
+            throw new IllegalArgumentException("User is not on stage.");
+            // 400 error 관련 custom 예외로 변경.
         }
     }
 
@@ -287,14 +322,19 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
                       .isPresent();
     }
     
+    /**
+     * stage를 나간 유저와 Instant Chat 중인 상대방을 찾고 이를 상대방에 통보한다.
+     * 
+     * 한 명의 유저가 여러 개의 Instant Chat 중일 수 있으므로 {@code forEach()}를 사용했다.
+     */
     private void sendLeaveMessageToChatPartners(String userName) {
         chatRooms.entrySet().parallelStream()
-                            .map(room -> room.getValue())
+                            .map(roomEntry -> roomEntry.getValue())
                             .filter(room -> room.getRoomUsers().contains(userName))
                             .forEach(room -> {
                                 msgTemplate
-                                    .convertAndSend("/stage/chat/" + room.getRoomId()
-                                                  , new LeaveNotification(INSTANT_PARTNER_LEAVE_MESSAGE));
+                                .convertAndSend("/stage/chat/" + room.getRoomId()
+                                              , new LeaveNotification(INSTANT_PARTNER_LEAVE_MESSAGE));
                             });
     }
 

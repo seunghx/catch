@@ -24,6 +24,7 @@ public class WebsocketConnectedListener implements ApplicationListener<SessionCo
             }else {
                 log.error("Unknown connected user detected."
                         + "It might be security or precending interceptor problem.");
+                
                 throw new IllegalStateException("Unknown connected user detected.");
             }
         }

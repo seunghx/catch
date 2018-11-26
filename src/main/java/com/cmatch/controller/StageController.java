@@ -13,6 +13,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.annotation.SubscribeMapping;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -119,7 +120,7 @@ public class StageController {
 
     @GetMapping("/stage/matching")
     public ResponseEntity<List<User>> matching(Principal principal,
-            @ModelAttribute("matchingCriteria") MatchingCriteria matchingCriteria) {
+            @ModelAttribute("matchingCriteria") @Validated MatchingCriteria matchingCriteria) {
 
         log.info("Received maatching request from user : {}", principal.getName());
 

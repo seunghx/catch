@@ -33,9 +33,12 @@ public class CmatchUserDetailsService implements UserDetailsService {
     @Override
     public CmatchUserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 
-        User user = Optional.ofNullable(userRepo.findByEmail(email)).orElseThrow(() -> {
-            throw new UsernameNotFoundException("User email does not exist");
-        });
+        User user = Optional.ofNullable(userRepo.findByEmail(email))
+                            .orElseThrow(() -> {
+                                log.info("User email {} does not exist. Now throwing exception.");
+                                
+                                throw new UsernameNotFoundException("User email does not exist");
+                            });
 
         log.debug("User information successfully loaded from database. Loaded user info : {}.", user);
 
