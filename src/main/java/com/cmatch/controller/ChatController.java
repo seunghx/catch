@@ -27,14 +27,23 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Controller
 public class ChatController {
+    
+    // Instance Fields
+    // ==========================================================================================================================
 
     private final UserService userService;
     private final ChatService chatService;
+
+    // Constructors
+    // ==========================================================================================================================
 
     public ChatController(UserService userService, ChatService chatService) {
         this.userService = userService;
         this.chatService = chatService;
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @MessageMapping("/chat/message/{room}")
     @SendTo("/topic/{room}")

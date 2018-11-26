@@ -2,7 +2,6 @@ package com.cmatch.support;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -41,9 +40,21 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+    
+    // Instance Fields
+    // ==========================================================================================================================
 
-    @Autowired
-    private MessageSource msgSource;
+    private final MessageSource msgSource;
+    
+    // Constructors
+    // ==========================================================================================================================
+
+    public GlobalExceptionHandler(MessageSource msgSource) {
+        this.msgSource = msgSource;
+    }
+
+    // Methods
+    // ==========================================================================================================================
 
     /**
      * 

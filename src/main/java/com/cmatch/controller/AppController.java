@@ -19,9 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Controller
 public class AppController {
+    
+    // Static Fields
+    // ==========================================================================================================================
 
     public static final String IGNORABLE_MESSAGE_HANDLER_END_POINT = "/customMessage";
     
+    // Instance Fields
+    // ==========================================================================================================================
+
     private final CodeBook codeBook;
 
     @Value("${instantChat.timeInterval.sec}")
@@ -29,9 +35,15 @@ public class AppController {
     @Value("${followingChoice.timeInterval.sec}")
     private long followingChoiceInterval;
 
+    // Constructors
+    // ==========================================================================================================================
+
     public AppController(CodeBook codeBook) {
         this.codeBook = codeBook;
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @GetMapping("/")
     public String index(Model model) {

@@ -47,6 +47,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class StageUnsubscribeInterceptor extends ChannelInterceptorAdapter {
     
+
+    // Methods
+    // ==========================================================================================================================
+
     /**
      * stage 관련 unsubscription 메세지가 전달될 경우 이를 오직 {@link SimpleBrokerMessageHandler}에만
      * 전달한다.<br>

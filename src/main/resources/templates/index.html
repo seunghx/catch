@@ -5,18 +5,16 @@
     <meta charset="utf-8">
     <title>C A T C H</title>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
-    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
-    <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" rel="stylesheet" type="text/css">
-    	  
-    <link href="/vendor/index/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/vendor/index/fontawesome-free/css/all.min.css" rel="stylesheet" type="text/css">
-    
-    <link href="/vendor/index/magnific-popup/magnific-popup.css" rel="stylesheet" type="text/css">
-	<link href="/css/index/index.min.css" rel="stylesheet">
-    <link href="/css/index/chat.css" rel="stylesheet">
-	<link href="/css/index/freelancer.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" type="text/css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic" type="text/css" rel="stylesheet">
+    <link href="/vendor/index/bootstrap/css/bootstrap.min.css" type="text/css" rel="stylesheet">
+    <link href="/vendor/index/fontawesome-free/css/all.min.css"  type="text/css" rel="stylesheet">
+    <link href="/vendor/index/magnific-popup/magnific-popup.css" type="text/css" rel="stylesheet">
+	<link href="/css/index/index.min.css" type="text/css" rel="stylesheet">
+    <link href="/css/index/chat.css" type="text/css" rel="stylesheet">
+	<link href="/css/index/freelancer.min.css" type="text/css" rel="stylesheet">
 	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" type="text/css" rel="stylesheet">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" type="text/css" rel="stylesheet">
 		
     <script src="/vendor/index/jquery/jquery.min.js"></script>
     <script src="/vendor/index/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -291,7 +289,6 @@
                 
                 $('#chat-msg-history').bind('scroll', function(e){
                 	
-                	
                     if(!isMessagesLoading && !curRoom.isAllMessageLoaded) { 
                         isMessagesLoading = true;
                         
@@ -329,7 +326,6 @@
             	
                 $('.chat_list').attr('class', 'chat_list');
                 $(this).attr('class', 'chat_list active_chat');
-                
             });
         }
         
@@ -371,6 +367,7 @@
                         }
                         
                         oldestMessageId = message.id;
+                        
                         isMessagesLoading = false;
                     }
                 });
@@ -499,6 +496,7 @@
     	  		
     	        if(payload.messageType === codeBook.commonMessageTypes.NOTICE){
 			        alert(payload.text);
+			        
 			        instantChatSubscription.unsubscribe();
 				    
 				    instantChatSubscription=null;

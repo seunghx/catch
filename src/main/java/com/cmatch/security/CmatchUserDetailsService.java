@@ -14,12 +14,21 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class CmatchUserDetailsService implements UserDetailsService {
+    
+    // Instance Fields
+    // ==========================================================================================================================
 
     private final UserRepository userRepo;
+
+    // Constructors
+    // ==========================================================================================================================
 
     public CmatchUserDetailsService(UserRepository userRepo) {
         this.userRepo = userRepo;
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @Override
     public CmatchUserDetails loadUserByUsername(String email) throws UsernameNotFoundException {

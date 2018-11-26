@@ -7,6 +7,9 @@ import com.cmatch.dto.MatchingCriteria;
 
 @Component
 public class DefaultScoreCalculator implements ScoreCalculator {
+    
+    // Methods
+    // ==========================================================================================================================
 
     @Override
     public int calculate(User user, MatchingCriteria criteria) {

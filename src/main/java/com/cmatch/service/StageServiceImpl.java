@@ -45,6 +45,9 @@ import static com.cmatch.dto.Notification.LeaveNotification;
 @Service
 public class StageServiceImpl implements StageService, ApplicationEventPublisherAware {
     
+    // Static Fields
+    // ==========================================================================================================================
+
     private static final String FOLLOWING_FAIL_MESSAGE = "%s님과의 팔로잉에 실패하였습니다.";
     private static final String FOLLOWING_SUCCESS_MESSAGE = "%s님과의 팔로잉에 성공하였습니다.";
     private static final String INSTANT_PARTNER_LEAVE_MESSAGE = "상대방이 stage를 떠났습니다.";
@@ -54,7 +57,8 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
     private static final Map<String, MatchingCandidate> users = new HashMap<>();
     private static final Map<String, InstantChatRoom> chatRooms = new HashMap<>();
 
-    // Injected fields
+    // Instance Fields
+    // ==========================================================================================================================
 
     private final UserRepository userRepo;
     private final SimpMessagingTemplate msgTemplate;
@@ -83,7 +87,9 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
      */
     @Value("${instantChat.timeoverSpare.sec}")
     private long instantChatTimeoverSpareSec;
-
+    
+    // Constructors
+    // ==========================================================================================================================
 
     public StageServiceImpl(UserRepository userRepo, SimpMessagingTemplate msgTemplate
                           , ScoreCalculator scoreCalculator) {
@@ -93,6 +99,9 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
 
         instantChatExecutorService = Executors.newScheduledThreadPool(INSTANT_CHAT_TIMER_THREAD_CNT);
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @Override
     public void addNewUserToStage(String email, String subscriptionId) {

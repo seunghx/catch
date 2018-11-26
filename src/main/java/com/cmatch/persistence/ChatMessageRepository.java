@@ -13,6 +13,7 @@ import com.cmatch.domain.ChatRoom;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Integer> {
+    
     @Query("SELECT m FROM ChatMessage m  WHERE m.room = :room")
     public List<ChatMessage> findByRoom(@Param("room") ChatRoom room, Pageable pageable);
     

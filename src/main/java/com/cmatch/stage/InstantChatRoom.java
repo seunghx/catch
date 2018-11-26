@@ -14,17 +14,29 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class InstantChatRoom {
 
+    // Static Fields
+    // ==========================================================================================================================
+
     private static final int INSTANT_CHATROOM_CAPACITY = 2;
-    
+
+    // Instance Fields
+    // ==========================================================================================================================
+
     private final Map<String, Boolean> followingChoices = new HashMap<>(INSTANT_CHATROOM_CAPACITY);
     private String roomId;
     private boolean timeover;
+
+    // Constructors
+    // ==========================================================================================================================
 
     public InstantChatRoom(String roomId, String user1, String user2) {
         this.roomId = roomId;
         followingChoices.put(user1, false);
         followingChoices.put(user2, false);
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     public Set<String> getRoomUsers() {
         return followingChoices.keySet();
@@ -58,7 +70,6 @@ public class InstantChatRoom {
                 return false;
             }
         }
-
         return true;
     }
 }

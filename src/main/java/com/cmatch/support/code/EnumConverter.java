@@ -4,10 +4,12 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.convert.converter.ConverterFactory;
 import org.springframework.stereotype.Component;
 
-// Code#getName() + CodeBook#fromString() 방식으로 변경할 것.
 @SuppressWarnings("rawtypes")
 @Component
 public class EnumConverter implements ConverterFactory<String, Enum> {
+
+    // Static Fields
+    // ==========================================================================================================================
 
     private static class StringToEnumConverter<T extends Enum> implements Converter<String, T> {
 
@@ -24,7 +26,10 @@ public class EnumConverter implements ConverterFactory<String, Enum> {
             return enumValue;
         }
     }
-
+    
+    // Methods
+    // ==========================================================================================================================
+    
     @Override
     public <T extends Enum> Converter<String, T> getConverter(Class<T> targetType) {
 

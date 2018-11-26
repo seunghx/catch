@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonSerialize(using = KeyValueShapedSerializer.class)
 public class SubscriptionModeContainer  implements KeyValueShapedCodeContainer {
 
-    private List<SubscriptionMode> subscriptionModes = Arrays.asList(SubscriptionMode.values());
+    private final List<SubscriptionMode> subscriptionModes = Arrays.asList(SubscriptionMode.values());
     
     @Override
     public List<SubscriptionMode> getKeyValueShapedCode() {

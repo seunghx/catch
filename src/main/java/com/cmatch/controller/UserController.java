@@ -15,11 +15,20 @@ import lombok.extern.slf4j.Slf4j;
 @Controller
 public class UserController {
 
+    // Instance Fields
+    // ==========================================================================================================================
+
     private final UserService userService;
+
+    // Constructors
+    // ==========================================================================================================================
 
     public UserController(UserService userService) {
         this.userService = userService;
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @GetMapping(value = "/user/login", produces = MediaType.TEXT_HTML_VALUE)
     public String helloAdmin() {

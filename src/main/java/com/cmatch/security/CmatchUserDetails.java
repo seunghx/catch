@@ -30,10 +30,14 @@ public class CmatchUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        List<String> userRoles = Optional.ofNullable(user.getRole().roles()).orElseThrow(() -> {
-            log.info("Illegal state detected. User role information from database is null.");
-            log.warn("Database record for user {}  might be changed illegally.", user.getId());
-            throw new InternalAuthenticationServiceException("Illegal state detected :: user role is null.");
+        List<String> userRoles = 
+                Optional.ofNullable(user.getRole().roles())
+                        .orElseThrow(() -> {
+                            log.info("Illegal state detected. User role information from database is null.");
+                            log.warn("Database record for user {}  might be changed illegally.", user.getId());
+                            
+                            throw new InternalAuthenticationServiceException("Illegal state detected."
+                                                                           + "User role is null.");
         });
 
         return AuthorityUtils.createAuthorityList(userRoles.toArray(new String[userRoles.size()]));

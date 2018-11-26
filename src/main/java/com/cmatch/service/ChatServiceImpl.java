@@ -27,13 +27,22 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class ChatServiceImpl implements ChatService {
+    
+    // Static Fields
+    // ==========================================================================================================================
 
     private static final int DEFAULT_START_PAGE = 0;
     
+    // Instance Fields
+    // ==========================================================================================================================
+
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
+
+    // Constructors 
+    // ==========================================================================================================================
 
     public ChatServiceImpl(ChatRoomRepository chatRoomRepository, ChatMessageRepository chatMessageRepository
                          , UserRepository userRepository) {
@@ -56,6 +65,9 @@ public class ChatServiceImpl implements ChatService {
                                                        dest.setFromImage(senderImage));
                    });
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @Override
     public void saveChatMessage(String text, String sender, String roomName) {
@@ -107,11 +119,11 @@ public class ChatServiceImpl implements ChatService {
        }else {
            
            chatMessages = chatMessageRepository
-                               .findByRoomAndComparingTime(criteria.getOldestMessageId()
-                                                         , chatRoom
-                                                         , PageRequest.of(DEFAULT_START_PAGE
-                                                                        , criteria.getMsgCntPerPage()
-                                                                        , Sort.by(Sort.Direction.DESC, "writeTime")));
+                         .findByRoomAndComparingTime(criteria.getOldestMessageId()
+                                                   , chatRoom
+                                                   , PageRequest.of(DEFAULT_START_PAGE
+                                                                  , criteria.getMsgCntPerPage()
+                                                                  , Sort.by(Sort.Direction.DESC, "writeTime")));
            
        }
        
@@ -129,7 +141,6 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatRoom validateRoom(String roomName) {
-        
        return Optional.ofNullable(chatRoomRepository.FindByName(roomName))
                       .orElseThrow(() -> {
                           log.error("Received roomName : {} does not exist.");

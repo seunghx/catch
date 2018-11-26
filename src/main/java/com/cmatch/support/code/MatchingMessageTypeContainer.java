@@ -9,7 +9,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonSerialize(using = KeyValueShapedSerializer.class)
 public class MatchingMessageTypeContainer implements KeyValueShapedCodeContainer {
 
-    private static List<MatchingMessageType> messageTypes = Arrays.asList(MatchingMessageType.values());
+    
+    private static final List<MatchingMessageType> messageTypes = Arrays.asList(MatchingMessageType.values());
 
     public List<MatchingMessageType> getKeyValueShapedCode() {
         return Collections.unmodifiableList(messageTypes);

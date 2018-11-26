@@ -8,11 +8,20 @@ import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 public class KeyValueShapedSerializer extends StdSerializer<KeyValueShapedCodeContainer> {
 
+    // Static Fields
+    // ==========================================================================================================================
+    
     private static final long serialVersionUID = 4663034866896145189L;
+
+    // Constructors
+    // ==========================================================================================================================
 
     public KeyValueShapedSerializer() {
         super(KeyValueShapedCodeContainer.class);
     }
+
+    // Methods
+    // ==========================================================================================================================
 
     @Override
     public void serialize(KeyValueShapedCodeContainer msgType, JsonGenerator gen, SerializerProvider provider)

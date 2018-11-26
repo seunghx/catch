@@ -34,14 +34,26 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 public class StageController {
+    
+    // Static Fields
+    // ==========================================================================================================================
 
     private static final String ENTRANCE_MSG = "%s 님이 입장하셨습니다.";
+    
+    // Instance Fields
+    // ==========================================================================================================================
 
     private final StageService stageService;
+
+    // Constructors
+    // ==========================================================================================================================
 
     public StageController(StageService stageService) {
         this.stageService = stageService;
     }
+    
+    // Methods
+    // ==========================================================================================================================
 
     @SubscribeMapping("/stage")
     @SendTo("/stage")

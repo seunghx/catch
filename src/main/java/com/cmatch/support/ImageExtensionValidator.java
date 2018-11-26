@@ -7,7 +7,6 @@ import java.util.Objects;
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
@@ -29,6 +28,9 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class ImageExtensionValidator implements ConstraintValidator<ImageExtension, MultipartFile> {
 
+    // Static Fields
+    // ==========================================================================================================================
+
     private static final List<String> supportedExtensions = new ArrayList<String>() {
 
         private static final long serialVersionUID = -6913419777268438554L;
@@ -44,10 +46,23 @@ public class ImageExtensionValidator implements ConstraintValidator<ImageExtensi
             add(".tiff");
         }
     };
+    
 
-    @Autowired
-    private MessageSource msgSource;
+    // Instance Fields
+    // ==========================================================================================================================
 
+    private final MessageSource msgSource;
+    
+    // Constructors
+    // ==========================================================================================================================
+
+    public ImageExtensionValidator(MessageSource msgSource) {
+        this.msgSource = msgSource;
+    }
+    
+    // Methods
+    // ==========================================================================================================================
+    
     @Override
     public void initialize(ImageExtension contactNumber) {
     }

@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class WebsocketConnectedListener implements ApplicationListener<SessionConnectedEvent> {
 
+    // Methods
+    // ==========================================================================================================================
     
     @Override
     public void onApplicationEvent(SessionConnectedEvent event) {

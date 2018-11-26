@@ -4,7 +4,6 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.cmatch.domain.User;
@@ -13,12 +12,23 @@ import com.cmatch.persistence.UserRepository;
 
 @Service
 public class UserServiceImpl implements UserService {
+    
+    // Instance Fields
+    // ==========================================================================================================================
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final ModelMapper modelMapper;
 
-    @Autowired
-    private ModelMapper modelMapper;
+    // Constructors
+    // ==========================================================================================================================
+
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+        this.modelMapper = new ModelMapper();
+    }
+    
+    // Methods
+    // ==========================================================================================================================
 
     @Override
     public void signup(UserSignupDTO signupDTO) {
