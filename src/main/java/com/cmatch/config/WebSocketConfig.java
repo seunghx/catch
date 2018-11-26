@@ -25,7 +25,7 @@ public class WebSocketConfig extends AbstractSessionWebSocketMessageBrokerConfig
     private String rabbitPass;
     
     /**
-     * STOMP의 endpoint는 관습상 /topic, /queue를 사용하긴 하나 특별히 정해진 것은 없는 반면,
+     * Spring STOMP support의 endpoint는 관습상 /topic, /queue를 사용하긴 하나 특별히 정해진 것은 없는 반면,
      * rabbitMQ의 STOMP support는 정해진 endpoint를 사용해야 한다. 
      * 
      * - ex) "/topic" : non-durable, auto-deleted exchange
