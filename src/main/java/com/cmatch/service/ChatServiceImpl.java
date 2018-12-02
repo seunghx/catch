@@ -20,6 +20,7 @@ import com.cmatch.persistence.ChatMessageRepository;
 import com.cmatch.persistence.ChatRoomRepository;
 import com.cmatch.persistence.UserRepository;
 import com.cmatch.support.FollowingEstablishedEvent;
+import com.cmatch.support.NoSuchRoomException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -67,12 +68,10 @@ public class ChatServiceImpl implements ChatService {
                    .addMappings(mapper -> { 
                        
                        mapper.<String>map(source -> source.getSender().getEmail()
-                                        , (dest, sender) -> 
-                                                       dest.setFrom(sender));
+                                        , (dest, sender) -> dest.setFrom(sender));
                        
                        mapper.<String>map(source -> source.getSender().getImage()
-                                        , (dest, senderImage) -> 
-                                                       dest.setFromImage(senderImage));
+                                        , (dest, senderImage) -> dest.setFromImage(senderImage));
                    });
     }
 
@@ -179,7 +178,7 @@ public class ChatServiceImpl implements ChatService {
                       .orElseThrow(() -> {
                           log.error("Received roomName : {} does not exist.");
                           
-                          throw new IllegalArgumentException("Non-existed roomName detected. "
+                          throw new NoSuchRoomException("Non-existed roomName detected. "
                                                            + "roomName : " + roomName);
                       });
     }    

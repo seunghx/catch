@@ -30,6 +30,7 @@ import com.cmatch.dto.MatchingResponse.CommonMatchingResponse;
 import com.cmatch.dto.MatchingResponse.MatchingAcceptResponse;
 import com.cmatch.persistence.UserRepository;
 import com.cmatch.stage.InstantChatRoom;
+import com.cmatch.stage.NoSuchUserOnStageException;
 import com.cmatch.stage.ScoreCalculator;
 import com.cmatch.support.FollowingEstablishedEvent;
 import com.cmatch.support.code.MatchingMessageType;
@@ -306,9 +307,8 @@ public class StageServiceImpl implements StageService, ApplicationEventPublisher
     
     private void validateStageUser(String userEmail) {
         if(!isUserExist(userEmail)) {
-            log.error("Illegal request detected. requested user is not on stage.");
-            throw new IllegalArgumentException("User is not on stage.");
-            // 400 error 관련 custom 예외로 변경.
+            log.error("Illegal request detected. requested user is not on stage. userEmail : {}.", userEmail);
+            throw new NoSuchUserOnStageException("User is not on stage. user email:" + userEmail);
         }
     }
 
