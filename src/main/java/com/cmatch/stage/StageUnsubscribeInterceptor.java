@@ -31,10 +31,10 @@ import lombok.extern.slf4j.Slf4j;
  * {@code stomp.js}의 subscribe() 함수와 달리 unsubscribe() 함수의 경우 특정 엔드포인트로 전달되는 것이아니고
  * 기존 subscription id를 서버에 전달하는 방식으로 동작한다. <br><br>
  * 
- * 특정 목적지 정보가 없기 때문에 unsubscribe 메세지를 받은 {@link AbstractSubscribableChannel} 기본 구현 
+ * 특정 목적지 정보가 없기 때문에 unsubscribe 메세지를 받은 {@link AbstractSubscribableChannel}기본 구현 
  * 클래스인 (추상 클래스 상속이나 구현이라고 하였음) {@link ExecutorSubscribableChannel}은 s
  * {@link SimpleBrokerMessageHandler}뿐만아니라 stage와 관련 없는 {@link StompBrokerRelayMessageHandler}
- * 에도 해당 메세지를 전달한다. <br><br>
+ * 에도 해당 메세지를 전달한다. (stage와 일반 chatting 전용 채널을 따로 설정해두었기 때문.) <br><br>
  * 
  * 메세지를 최종적으로 전달 받은 RabbitMQ는 존재않는 subscription id라며 에러 메세지를 반환하고 클라이언트와 서버간의 
  * 커넥션이 끊겨 버렸다. 물론 재연결이 가능하지만 이건 임시방편일 뿐이므로 아래와 같은 Inbound Channel에 적용될 
